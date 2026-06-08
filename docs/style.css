@@ -437,6 +437,76 @@ body {
 }
 .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
+/* ── Password Screen ── */
+#password-screen {
+  position: fixed;
+  inset: 0;
+  background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+}
+
+.pw-box {
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 24px;
+  padding: 44px 36px;
+  width: 100%;
+  max-width: 340px;
+  text-align: center;
+  color: white;
+}
+
+.pw-box h2 {
+  font-size: 1.7rem;
+  margin-bottom: 8px;
+  font-weight: 800;
+}
+
+.pw-box > p {
+  font-size: 0.88rem;
+  color: rgba(255, 255, 255, 0.55);
+  margin-bottom: 28px;
+}
+
+.pw-box input[type="password"] {
+  width: 100%;
+  padding: 13px 16px;
+  border-radius: 12px;
+  border: 1.5px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.08);
+  color: white;
+  font-size: 1.1rem;
+  font-family: inherit;
+  text-align: center;
+  letter-spacing: 4px;
+  outline: none;
+  margin-bottom: 10px;
+  transition: border-color 0.2s;
+}
+.pw-box input[type="password"]:focus { border-color: var(--accent); }
+.pw-box input::placeholder { letter-spacing: normal; color: rgba(255,255,255,0.3); font-size: 1rem; }
+
+.pw-box .btn-primary {
+  width: 100%;
+  padding: 13px;
+  font-size: 0.95rem;
+  border-radius: 12px;
+  margin-top: 4px;
+}
+
+.pw-error {
+  color: #ff6b6b;
+  font-size: 0.82rem;
+  min-height: 1.3em;
+  margin-bottom: 8px;
+}
+
 /* ── Responsive ── */
 @media (max-width: 480px) {
   .weeks-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }

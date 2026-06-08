@@ -258,4 +258,4 @@ function showToast(msg) {
   toastTimer = setTimeout(() => el.classList.remove('show'), 3000);
 }
 
-init();
+requireAuth(init);

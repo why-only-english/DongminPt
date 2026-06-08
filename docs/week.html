@@ -27,6 +27,19 @@
 
   <div class="toast" id="toast"></div>
 
+  <!-- Password Screen -->
+  <div id="password-screen" style="display:none">
+    <div class="pw-box">
+      <h2>🏋️ 동민PT</h2>
+      <p>비밀번호를 입력하세요</p>
+      <form id="password-form">
+        <input id="input-password" type="password" placeholder="••••••••" autofocus required />
+        <p id="pw-error" class="pw-error"></p>
+        <button type="submit" class="btn-primary">입장</button>
+      </form>
+    </div>
+  </div>
+
   <!-- Upload Modal -->
   <div id="upload-modal" class="modal-backdrop">
     <div class="modal">
@@ -78,6 +91,7 @@
     </div>
   </div>
 
+  <script src="auth.js"></script>
   <script src="github-api.js"></script>
   <script src="week-app.js"></script>
 </body>
