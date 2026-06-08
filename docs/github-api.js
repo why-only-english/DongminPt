@@ -1,15 +1,12 @@
+const _TOKEN = '__APP_TOKEN__';
+
 class GitHubAPI {
   constructor() {
-    const cfg = JSON.parse(localStorage.getItem('dongminpt_config') || '{}');
-    this.token = cfg.token || '';
-    this.owner = cfg.owner || '';
-    this.repo = cfg.repo || '';
+    this.token = _TOKEN;
+    this.owner = 'why-only-english';
+    this.repo = 'DongminPt';
     this.branch = 'main';
     this.base = `https://api.github.com/repos/${this.owner}/${this.repo}`;
-  }
-
-  isConfigured() {
-    return !!(this.token && this.owner && this.repo);
   }
 
   get _headers() {
@@ -61,7 +58,6 @@ class GitHubAPI {
   }
 
   async putImage(path, base64Data, message) {
-    // sha가 필요한 경우를 위해 기존 파일 확인
     let sha;
     const check = await fetch(`${this.base}/contents/${path}`, { headers: this._headers });
     if (check.ok) {

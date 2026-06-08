@@ -8,7 +8,7 @@ let activePostId = null;
 
 // ── Init ──────────────────────────────────────
 async function init() {
-  if (!api.isConfigured() || !weekId) {
+  if (!weekId) {
     location.href = 'index.html';
     return;
   }

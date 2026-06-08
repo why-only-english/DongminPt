@@ -2,10 +2,6 @@ const api = new GitHubAPI();
 
 // ── Init ──────────────────────────────────────
 async function init() {
-  if (!api.isConfigured()) {
-    openModal('setup-modal');
-    return;
-  }
   await loadWeeks();
 }
 
@@ -81,15 +77,6 @@ document.querySelectorAll('.modal-backdrop').forEach(el => {
   el.addEventListener('click', e => { if (e.target === el) el.classList.remove('active'); });
 });
 
-document.getElementById('setup-form').addEventListener('submit', e => {
-  e.preventDefault();
-  const owner = document.getElementById('input-owner').value.trim();
-  const repo = document.getElementById('input-repo').value.trim();
-  const token = document.getElementById('input-token').value.trim();
-  localStorage.setItem('dongminpt_config', JSON.stringify({ owner, repo, token }));
-  location.reload();
-});
-
 document.getElementById('add-week-form').addEventListener('submit', async e => {
   e.preventDefault();
   const title = document.getElementById('input-week-title').value.trim();
@@ -100,13 +87,6 @@ document.getElementById('add-week-form').addEventListener('submit', async e => {
 });
 
 document.getElementById('btn-add-week').addEventListener('click', () => openModal('add-week-modal'));
-document.getElementById('btn-setup').addEventListener('click', () => {
-  const cfg = JSON.parse(localStorage.getItem('dongminpt_config') || '{}');
-  document.getElementById('input-owner').value = cfg.owner || '';
-  document.getElementById('input-repo').value = cfg.repo || '';
-  document.getElementById('input-token').value = cfg.token || '';
-  openModal('setup-modal');
-});
 
 // ── Utils ─────────────────────────────────────
 function showLoading(show, msg = '처리 중...') {
