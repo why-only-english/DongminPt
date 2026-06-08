@@ -125,16 +125,30 @@ function renderPosts(posts) {
   sorted.forEach(post => {
     const card = document.createElement('div');
     card.className = 'post-card';
-    card.innerHTML = `
-      <div class="post-img-wrap">
-        <img class="post-img" src="${api.rawUrl(post.imagePath)}" alt="${escHtml(post.author)}" loading="lazy" />
-      </div>
-      <div class="post-info">
-        <span class="post-author">${escHtml(post.author)}</span>
-        <p class="post-caption">${escHtml(post.caption || '')}</p>
-        <button class="btn-comment">💬 댓글 ${post.comments.length}</button>
-      </div>`;
-    card.querySelector('.btn-comment').addEventListener('click', () => openComments(post.id));
+
+    const imgWrap = document.createElement('div');
+    imgWrap.className = 'post-img-wrap loading';
+
+    const img = document.createElement('img');
+    img.className = 'post-img';
+    img.alt = escHtml(post.author);
+
+    api.getImageUrl(post.imagePath)
+      .then(url => { img.src = url; imgWrap.classList.remove('loading'); })
+      .catch(() => { imgWrap.classList.remove('loading'); });
+
+    imgWrap.appendChild(img);
+
+    const info = document.createElement('div');
+    info.className = 'post-info';
+    info.innerHTML = `
+      <span class="post-author">${escHtml(post.author)}</span>
+      <p class="post-caption">${escHtml(post.caption || '')}</p>
+      <button class="btn-comment">💬 댓글 ${post.comments.length}</button>`;
+    info.querySelector('.btn-comment').addEventListener('click', () => openComments(post.id));
+
+    card.appendChild(imgWrap);
+    card.appendChild(info);
     grid.appendChild(card);
   });
 }
