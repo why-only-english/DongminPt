@@ -2,8 +2,9 @@
 
 - 레포지토리: https://github.com/why-only-english/DongminPt
 - 배포 URL: https://why-only-english.github.io/DongminPt/
-- 배포: GitHub Pages (`docs/` 폴더 기준)
+- 배포: GitHub Pages (GitHub Actions → `docs/` 폴더)
 - 작성일: 2026-06-08
+- 최종 수정: 2026-06-08
 
 ---
 
@@ -196,7 +197,7 @@ DongminPt/
 
 | 항목 | 내용 |
 |------|------|
-| **레포 공개 여부** | Public 레포여야 이미지가 raw URL로 표시됨 |
+| **레포 공개 여부** | **반드시 Public 유지** — Private 전환 시 GitHub Free 플랜은 Pages 불가, raw.githubusercontent.com 이미지도 인증 없이 로드 불가 |
 | **동시 쓰기 충돌** | 두 명이 동시에 업로드하면 409 에러 발생 (소규모 개인 서비스라 허용 범위) |
 | **이미지 딜레이** | 업로드 직후 raw URL 접근까지 수 초 지연될 수 있음 |
 | **토큰 보안** | PAT는 localStorage에만 저장, 절대 코드/커밋에 포함하지 말 것 |
