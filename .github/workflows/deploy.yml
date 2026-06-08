@@ -23,9 +23,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Inject password hash
-        run: sed -i "s/__PASSWORD_HASH__/${{ secrets.PASSWORD_HASH }}/g" docs/auth.js
-
       - uses: actions/upload-pages-artifact@v3
         with:
           path: docs/

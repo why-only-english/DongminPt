@@ -1,4 +1,4 @@
-const _HASH = '__PASSWORD_HASH__';
+const _HASH = 'ec699f9079b9f1059896bb2cf969a399826cbcf02b12a48b2b51b30391419aca';
 
 async function _sha256(str) {
   const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
