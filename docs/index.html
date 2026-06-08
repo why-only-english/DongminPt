@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>동민PT</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <header class="header">
+    <h1 class="logo">🏋️ 동민PT</h1>
+    <button id="btn-setup" class="btn-icon" title="설정">⚙️</button>
+  </header>
+
+  <main class="container">
+    <div id="weeks-grid" class="weeks-grid"></div>
+  </main>
+
+  <button id="btn-add-week" class="fab">+ 주차 추가</button>
+
+  <div id="loading" class="loading-overlay" style="display:none">
+    <div class="spinner"></div>
+    <p id="loading-msg">불러오는 중...</p>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <!-- Setup Modal -->
+  <div id="setup-modal" class="modal-backdrop">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>⚙️ GitHub 설정</h2>
+      </div>
+      <p class="modal-desc">
+        이미지와 데이터를 저장할 GitHub 레포지토리를 연결합니다.<br>
+        쓰기 권한이 있는 Personal Access Token(PAT)이 필요합니다.<br>
+        <strong>레포지토리는 Public으로 설정해야 이미지가 표시됩니다.</strong>
+      </p>
+      <form id="setup-form">
+        <label>GitHub 사용자명 (owner)
+          <input id="input-owner" type="text" placeholder="예: jgmoon00" autocomplete="off" required />
+        </label>
+        <label>레포지토리 이름
+          <input id="input-repo" type="text" placeholder="예: DongminPt" autocomplete="off" required />
+        </label>
+        <label>Personal Access Token (PAT)
+          <input id="input-token" type="password" placeholder="ghp_..." required />
+        </label>
+        <div class="modal-actions">
+          <button type="submit" class="btn-primary">저장하기</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Add Week Modal -->
+  <div id="add-week-modal" class="modal-backdrop">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>📅 주차 추가</h2>
+        <button class="modal-close" onclick="closeModal('add-week-modal')">✕</button>
+      </div>
+      <form id="add-week-form">
+        <label>주차 이름
+          <input id="input-week-title" type="text" placeholder="예: 3월 1주차" required />
+        </label>
+        <div class="modal-actions">
+          <button type="button" class="btn-secondary" onclick="closeModal('add-week-modal')">취소</button>
+          <button type="submit" class="btn-primary">추가</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="github-api.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

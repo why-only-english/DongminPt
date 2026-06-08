@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>동민PT</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <header class="header">
+    <a href="index.html" class="btn-back">← 목록</a>
+    <h1 id="week-title" class="logo">주차</h1>
+    <span style="width:40px"></span>
+  </header>
+
+  <main class="container">
+    <div id="posts-grid" class="posts-grid"></div>
+  </main>
+
+  <button id="btn-upload" class="fab">+ 사진 올리기</button>
+
+  <div id="loading" class="loading-overlay" style="display:none">
+    <div class="spinner"></div>
+    <p id="loading-msg">불러오는 중...</p>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <!-- Upload Modal -->
+  <div id="upload-modal" class="modal-backdrop">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>📸 사진 올리기</h2>
+        <button class="modal-close" onclick="closeModal('upload-modal')">✕</button>
+      </div>
+      <form id="upload-form">
+        <label>이름
+          <input id="input-author" type="text" placeholder="이름을 입력하세요" autocomplete="name" required />
+        </label>
+        <label>사진 선택
+          <input id="input-photo" type="file" accept="image/*" required />
+        </label>
+        <div class="image-preview" id="image-preview">
+          <img id="preview-img" src="" alt="미리보기" />
+        </div>
+        <label>한마디 (선택)
+          <input id="input-caption" type="text" placeholder="오늘의 한마디..." />
+        </label>
+        <div class="modal-actions">
+          <button type="button" class="btn-secondary" onclick="closeModal('upload-modal')">취소</button>
+          <button type="submit" class="btn-primary" id="btn-submit-upload">올리기</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Comments Modal -->
+  <div id="comments-modal" class="modal-backdrop">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>💬 댓글</h2>
+        <button class="modal-close" onclick="closeModal('comments-modal')">✕</button>
+      </div>
+      <div id="comments-list" class="comments-list"></div>
+      <form id="comment-form">
+        <label>이름
+          <input id="input-comment-author" type="text" placeholder="이름" autocomplete="name" required />
+        </label>
+        <label>댓글
+          <input id="input-comment-text" type="text" placeholder="응원 한마디!" required />
+        </label>
+        <div class="modal-actions">
+          <button type="button" class="btn-secondary" onclick="closeModal('comments-modal')">닫기</button>
+          <button type="submit" class="btn-primary">등록</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="github-api.js"></script>
+  <script src="week-app.js"></script>
+</body>
+</html>
