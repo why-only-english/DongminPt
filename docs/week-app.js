@@ -176,6 +176,11 @@ document.getElementById('btn-upload').addEventListener('click', () => openModal(
 document.getElementById('input-photo').addEventListener('change', e => {
   const file = e.target.files[0];
   if (!file) return;
+
+  document.getElementById('file-name-display').textContent = file.name;
+  document.getElementById('file-drop-zone').classList.add('has-file');
+  document.querySelector('.file-drop-icon').textContent = '✅';
+
   const reader = new FileReader();
   reader.onload = ev => {
     document.getElementById('preview-img').src = ev.target.result;
@@ -194,6 +199,9 @@ document.getElementById('upload-form').addEventListener('submit', async e => {
   closeModal('upload-modal');
   e.target.reset();
   document.getElementById('image-preview').style.display = 'none';
+  document.getElementById('file-name-display').textContent = '';
+  document.getElementById('file-drop-zone').classList.remove('has-file');
+  document.querySelector('.file-drop-icon').textContent = '📷';
   await uploadPhoto(author, caption, file);
 });
 

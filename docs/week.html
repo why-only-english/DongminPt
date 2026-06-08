@@ -53,7 +53,12 @@
           <input id="input-author" type="text" placeholder="이름을 입력하세요" autocomplete="name" required />
         </label>
         <label>사진 선택
-          <input id="input-photo" type="file" accept="image/*" required />
+          <input id="input-photo" type="file" accept="image/*" class="hidden-file-input" required />
+          <div class="file-drop-zone" id="file-drop-zone">
+            <span class="file-drop-icon">📷</span>
+            <span class="file-drop-text">탭하여 사진 선택</span>
+            <span class="file-drop-name" id="file-name-display"></span>
+          </div>
         </label>
         <div class="image-preview" id="image-preview">
           <img id="preview-img" src="" alt="미리보기" />
