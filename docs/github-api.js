@@ -119,9 +119,18 @@ class GitHubAPI {
     const res = await fetch(`${this.base}/contents/${path}`, { headers: this._headers });
     if (!res.ok) throw new Error('이미지 로드 실패');
     const data = await res.json();
-    const fileContent = this._b64ToUtf8(data.content);
-    const decrypted = await this._decrypt(fileContent);
-    const blob = new Blob([decrypted], { type: 'image/jpeg' });
+    const raw = data.content.replace(/\s/g, '');
+
+    let imageBytes;
+    try {
+      // 암호화된 이미지
+      imageBytes = await this._decrypt(this._b64ToUtf8(data.content));
+    } catch {
+      // 암호화 전 이미지 (raw binary)
+      imageBytes = Uint8Array.from(atob(raw), c => c.charCodeAt(0));
+    }
+
+    const blob = new Blob([imageBytes], { type: 'image/jpeg' });
     return URL.createObjectURL(blob);
   }
 }
