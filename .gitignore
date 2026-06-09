@@ -3,3 +3,24 @@
 .DS_Store
 Thumbs.db
 *.log
+
+# Node / Next.js
+node_modules/
+.next/
+out/
+.vercel/
+*.tsbuildinfo
+
+# Local env / secrets
+.env
+.env.*
+!.env.example
+.supabase-runtime.env
+
+# Supabase local state
+**/supabase/.temp/
+
+# Python/cache leftovers
+.venv/
+__pycache__/
+.pytest_cache/
