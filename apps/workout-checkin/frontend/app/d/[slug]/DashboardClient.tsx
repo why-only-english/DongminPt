@@ -642,7 +642,6 @@ export function DashboardClient({
                       <div className="calendar-names">
                         {day.photos.slice(0, 4).map((photo) => <b key={`${day.date}-${photo.nickname}`}>{initials(photo.nickname)}</b>)}
                       </div>
-                      {hasPhotos && <div className="calendar-attendees">{day.photos.map((photo) => <i key={`${day.date}-${photo.nickname}-name`}>{photo.nickname}</i>)}</div>}
                       {hasPhotos && <small>사진 보기</small>}
                     </>
                   );
@@ -802,7 +801,6 @@ export function DashboardClient({
                         {day.members.map((member) => <b title={member} key={`${day.date}-${member}`}>{initials(member)}</b>)}
                       </div>
                     ) : <span className="month-rest">-</span>}
-                    {day.members.length > 0 && <p>{day.members.join(', ')}</p>}
                   </div>
                 ))}
               </div>
