@@ -88,6 +88,22 @@ export type DashboardData = {
   source: 'api' | 'mock';
 };
 
+export function emptyDashboardData(source: 'api' | 'mock' = 'api'): DashboardData {
+  return {
+    source,
+    summary: {
+      week_start: '',
+      week_end: '',
+      required_days: 3,
+      penalty_amount_krw: 30000,
+      members: [],
+    },
+    todayPhotos: [],
+    weekDays: [],
+    monthDays: [],
+  };
+}
+
 export type LoginResponse = { token: string; expires_at: string; nickname: string };
 export type UploadCheckinResponse = { status: 'approved' | 'duplicate_ignored'; message: string; exercise_date?: string; image_id?: string };
 export type NotificationSubscriptionResponse = { ok: boolean; status: 'active' | 'revoked' };
@@ -97,7 +113,7 @@ export function getApiBaseUrl(): string | null {
 }
 
 export async function getDashboardData(_slug: string): Promise<DashboardData> {
-  return mockDashboardData(process.env.NEXT_PUBLIC_API_BASE_URL ? 'api' : 'mock');
+  return process.env.NEXT_PUBLIC_API_BASE_URL ? emptyDashboardData('api') : mockDashboardData('mock');
 }
 
 export function mockDashboardData(source: 'api' | 'mock' = 'mock'): DashboardData {

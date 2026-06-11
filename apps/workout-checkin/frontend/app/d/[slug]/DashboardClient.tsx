@@ -10,6 +10,7 @@ import {
   fetchDashboardData,
   fetchPhotoComments,
   loginDashboard,
+  emptyDashboardData,
   mockDashboardData,
   type AttendanceDay,
   type DashboardData,
@@ -269,7 +270,7 @@ export function DashboardClient({
         setSessionToken(null);
         setAuthStatus('error');
         setAuthError('로그인이 만료됐거나 접근코드가 바뀐 것 같아. 다시 들어와줘.');
-        setDashboardData(mockDashboardData('api'));
+        setDashboardData(emptyDashboardData('api'));
       });
   }, [sessionStorageKey, sessionToken, slug, source]);
 
@@ -508,7 +509,23 @@ export function DashboardClient({
     if (commentTextRef.current) commentTextRef.current.value = '';
   }
 
-  if (source === 'api' && authStatus !== 'authenticated' && authStatus !== 'loading') {
+  if (source === 'api' && (authStatus === 'checking' || authStatus === 'loading')) {
+    return (
+      <main className="page">
+        <div className="shell">
+          <section className="login-panel loading-panel">
+            <div>
+              <span>PRIVATE BOARD</span>
+              <h1>출석판 불러오는 중</h1>
+              <p>잠깐만 기다려줘. 실제 친구들 기록을 가져오고 있어.</p>
+            </div>
+          </section>
+        </div>
+      </main>
+    );
+  }
+
+  if (source === 'api' && authStatus !== 'authenticated') {
     return (
       <main className="page">
         <div className="shell">
