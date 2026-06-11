@@ -354,7 +354,9 @@ export function DashboardClient({
   const monthBlankCount = mondayFirstBlankCount(monthDays);
   const monthTotalChecks = monthDays.reduce((sum, day) => sum + day.members.length, 0);
   const weekdayLabels = ['월', '화', '수', '목', '금', '토', '일'];
-  const weeklyPhotos = weekDays.flatMap((day) => day.photos.map((photo) => ({ ...photo, exercise_date: day.date })));
+  const weeklyPhotos = weekDays
+    .flatMap((day) => day.photos.map((photo, index) => ({ ...photo, exercise_date: day.date, _day_order: index })))
+    .sort((a, b) => b.exercise_date.localeCompare(a.exercise_date) || a._day_order - b._day_order);
   const selectedPhotoKey = selectedPhoto ? photoKey(selectedPhoto) : '';
   const selectedComments = selectedPhoto ? (commentsByPhoto[selectedPhotoKey] ?? starterComments(selectedPhoto)) : [];
 
