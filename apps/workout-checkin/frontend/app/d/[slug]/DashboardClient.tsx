@@ -996,12 +996,11 @@ export function DashboardClient({
                     <button className={`month-day game-day ${record ? `done ${tone}` : ''} ${selectedJeungbaramDay?.date === day.date ? 'selected' : ''}`} type="button" key={`game-${day.date}`} onClick={() => openJeungbaramRecord(day)} aria-label={`${day.date} 증바람 ${record ? '상세 보기' : '기록하기'}`}>
                       <div className="month-day-top">
                         <strong>{formatDay(day.date)}</strong>
-                        <em>{record ? `${record.total_games}판` : 'NO GAME'}</em>
+                        {record && <em>{record.total_games}판</em>}
                       </div>
                       {record ? (
                         <div className="game-day-copy">
                           <b>{formatWinRate(record.win_rate)}</b>
-                          <span>{tone === 'win' ? 'GREEN DAY' : tone === 'lose' ? 'RED DAY' : 'EVEN DAY'}</span>
                         </div>
                       ) : <span className="month-rest">기록</span>}
                     </button>

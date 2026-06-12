@@ -1801,7 +1801,6 @@ a { color: inherit; text-decoration: none; }
   position: relative;
   z-index: 1;
   display: grid;
-  gap: 5px;
 }
 .game-day-copy b {
   width: fit-content;
@@ -1811,13 +1810,6 @@ a { color: inherit; text-decoration: none; }
   background: rgba(255,255,255,.09);
   font-size: 13px;
   font-weight: 1000;
-}
-.game-day-copy span {
-  color: var(--muted-2);
-  font-size: 9px;
-  font-weight: 900;
-  letter-spacing: .08em;
-  line-height: 1.25;
 }
 .game-record-form {
   margin-top: 18px;
@@ -2042,7 +2034,38 @@ a { color: inherit; text-decoration: none; }
   .game-participant-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .game-form-head { display: grid; }
   .game-score-inputs input { font-size: 20px; }
-  .game-calendar-grid .month-day { min-height: 96px; }
+  .game-calendar-grid {
+    gap: 4px;
+  }
+  .game-calendar-grid .month-day {
+    min-height: 68px;
+    border-radius: 13px;
+    padding: 6px 5px;
+    gap: 3px;
+  }
+  .game-calendar-grid .month-day-top strong {
+    font-size: 18px;
+  }
+  .game-calendar-grid .month-day-top em {
+    margin-top: 1px;
+    font-size: 8px;
+    letter-spacing: 0;
+  }
+  .game-calendar-grid .game-day.done::after {
+    inset: auto 7px 6px 7px;
+    height: 3px;
+  }
+  .game-day-copy b {
+    max-width: 100%;
+    padding: 2px 4px;
+    font-size: 10px;
+    line-height: 1.15;
+    letter-spacing: -.04em;
+  }
+  .game-calendar-grid .month-rest {
+    font-size: 11px;
+    line-height: 1;
+  }
   .game-record-detail { grid-template-columns: 1fr; }
   .game-detail-hero { grid-row: auto; }
   .game-detail-hero strong { font-size: 58px; }
