@@ -343,10 +343,11 @@ export function DashboardClient({
     const completedMembers = summary.members.filter((m) => m.status === 'safe');
     const emergencyMembers = summary.members.filter((m) => m.status === 'emergency' || m.status === 'penalty_due');
     const expectedPenalty = summary.members.reduce((sum, m) => sum + m.expected_penalty, 0);
-    const totalDone = summary.members.reduce((sum, m) => sum + m.approved_days, 0);
+    const creditedDone = summary.members.reduce((sum, m) => sum + Math.min(m.approved_days, summary.required_days), 0);
     const totalTarget = summary.members.length * summary.required_days;
-    const remaining = Math.max(0, totalTarget - totalDone);
-    const progress = totalTarget ? Math.min(100, Math.round((totalDone / totalTarget) * 100)) : 0;
+    const remaining = Math.max(0, totalTarget - creditedDone);
+    const progress = totalTarget ? Math.min(100, Math.round((creditedDone / totalTarget) * 100)) : 0;
+    const totalDone = creditedDone;
     return { completedMembers, emergencyMembers, expectedPenalty, totalDone, totalTarget, remaining, progress };
   }, [summary.members, summary.required_days]);
 
