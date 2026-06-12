@@ -117,6 +117,13 @@ function formatWinRate(rate: number) {
   return `${Number.isInteger(rate) ? rate.toFixed(0) : rate.toFixed(1)}%`;
 }
 
+function winRateTone(rate: number) {
+  if (!Number.isFinite(rate)) return 'draw';
+  if (rate > 50) return 'win';
+  if (rate < 50) return 'lose';
+  return 'draw';
+}
+
 function clampNumberInput(value: string) {
   return value.replace(/[^0-9]/g, '').slice(0, 4);
 }
@@ -213,6 +220,7 @@ export function DashboardClient({
   );
   const [authError, setAuthError] = useState('');
   const commentTextRef = useRef<HTMLTextAreaElement>(null);
+  const gameRecordPanelRef = useRef<HTMLFormElement>(null);
   const [commentsByPhoto, setCommentsByPhoto] = useState<Record<string, PhotoComment[]>>({});
   const [reactionCounts, setReactionCounts] = useState<Record<string, Partial<Record<ReactionLabel, number>>>>({});
   const [detailError, setDetailError] = useState('');
@@ -319,6 +327,9 @@ export function DashboardClient({
     setGameLosses(day.record ? String(day.record.losses) : '');
     setGameParticipants(day.record?.participants ?? []);
     setJeungbaramError('');
+    window.setTimeout(() => {
+      gameRecordPanelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }, 0);
   }
 
   function toggleGameParticipant(participant: string) {
@@ -959,7 +970,7 @@ export function DashboardClient({
                 <div>
                   <span>JEUNGBARAM CALENDAR</span>
                   <h2>{gameMonthTitle || '증바람 월간보기'}</h2>
-                  <p>날짜를 누르면 그날 승/패와 참석자를 기록하거나 수정해요.</p>
+                  <p>색으로 승률을 보고, 날짜를 누르면 크게 펼쳐서 확인해요.</p>
                 </div>
                 <button type="button" className="month-close" onClick={closeOverlay} aria-label="증바람 달력 닫기">닫기</button>
               </div>
@@ -980,8 +991,9 @@ export function DashboardClient({
                 {Array.from({ length: gameMonthBlankCount }).map((_, index) => <div className="month-day blank" key={`game-blank-${index}`} />)}
                 {jeungbaramMonthly.days.map((day) => {
                   const record = day.record;
+                  const tone = record ? winRateTone(record.win_rate) : '';
                   return (
-                    <button className={`month-day game-day ${record ? 'done' : ''} ${selectedJeungbaramDay?.date === day.date ? 'selected' : ''}`} type="button" key={`game-${day.date}`} onClick={() => openJeungbaramRecord(day)} aria-label={`${day.date} 증바람 기록하기`}>
+                    <button className={`month-day game-day ${record ? `done ${tone}` : ''} ${selectedJeungbaramDay?.date === day.date ? 'selected' : ''}`} type="button" key={`game-${day.date}`} onClick={() => openJeungbaramRecord(day)} aria-label={`${day.date} 증바람 ${record ? '상세 보기' : '기록하기'}`}>
                       <div className="month-day-top">
                         <strong>{formatDay(day.date)}</strong>
                         <em>{record ? `${record.total_games}판` : 'NO GAME'}</em>
@@ -989,7 +1001,7 @@ export function DashboardClient({
                       {record ? (
                         <div className="game-day-copy">
                           <b>{formatWinRate(record.win_rate)}</b>
-                          <span>{record.participants.slice(0, 3).join(', ')}</span>
+                          <span>{tone === 'win' ? 'GREEN DAY' : tone === 'lose' ? 'RED DAY' : 'EVEN DAY'}</span>
                         </div>
                       ) : <span className="month-rest">기록</span>}
                     </button>
@@ -998,14 +1010,37 @@ export function DashboardClient({
               </div>
 
               {selectedJeungbaramDay && (
-                <form className="game-record-form" onSubmit={submitJeungbaramRecord}>
+                <form ref={gameRecordPanelRef} className={`game-record-form ${selectedJeungbaramDay.record ? 'has-record' : 'is-empty-day'}`} onSubmit={submitJeungbaramRecord}>
                   <div className="game-form-head">
                     <div>
-                      <span>RECORD</span>
+                      <span>{selectedJeungbaramDay.record ? 'DAY DETAIL' : 'NEW RECORD'}</span>
                       <strong>{formatWeekday(selectedJeungbaramDay.date)} {formatDay(selectedJeungbaramDay.date)}</strong>
                     </div>
                     <em>{selectedGameTotal ? `${selectedGameTotal}판 · ${formatWinRate(selectedGameRate)}` : '승/패 입력 대기'}</em>
                   </div>
+
+                  {selectedJeungbaramDay.record && (
+                    <div className={`game-record-detail ${winRateTone(selectedJeungbaramDay.record.win_rate)}`}>
+                      <div className="game-detail-hero">
+                        <span>승률</span>
+                        <strong>{formatWinRate(selectedJeungbaramDay.record.win_rate)}</strong>
+                        <em>{selectedJeungbaramDay.record.total_games}판 기록</em>
+                      </div>
+                      <div className="game-detail-stats">
+                        <div><span>승리</span><strong>{selectedJeungbaramDay.record.wins}</strong></div>
+                        <div><span>패배</span><strong>{selectedJeungbaramDay.record.losses}</strong></div>
+                      </div>
+                      <div className="game-detail-participants">
+                        <span>참가자</span>
+                        <div>
+                          {selectedJeungbaramDay.record.participants.map((participant) => <b key={`${selectedJeungbaramDay.date}-${participant}`}>{participant}</b>)}
+                        </div>
+                      </div>
+                      <button type="button" className="game-detail-delete" onClick={removeJeungbaramRecord} disabled={gameSaving}>
+                        이 날 기록 삭제
+                      </button>
+                    </div>
+                  )}
 
                   <div className="game-score-inputs">
                     <label><span>승</span><input inputMode="numeric" value={gameWins} onChange={(event) => setGameWins(clampNumberInput(event.target.value))} placeholder="0" /></label>
