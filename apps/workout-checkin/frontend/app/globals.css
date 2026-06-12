@@ -1768,35 +1768,24 @@ a { color: inherit; text-decoration: none; }
 .game-calendar-grid .game-day.done {
   border-width: 1.5px;
 }
-.game-calendar-grid .game-day.done::after {
-  content: "";
-  position: absolute;
-  inset: auto 10px 10px 10px;
-  height: 4px;
-  border-radius: 999px;
-  opacity: .95;
-}
 .game-calendar-grid .game-day.win {
   border-color: rgba(126, 220, 151, .48);
   background:
     radial-gradient(circle at 75% 20%, rgba(126, 220, 151, .20), transparent 58%),
     rgba(11, 10, 7, .94);
 }
-.game-calendar-grid .game-day.win::after { background: #7edc97; }
 .game-calendar-grid .game-day.lose {
   border-color: rgba(244, 101, 101, .50);
   background:
     radial-gradient(circle at 75% 20%, rgba(244, 101, 101, .20), transparent 58%),
     rgba(11, 10, 7, .94);
 }
-.game-calendar-grid .game-day.lose::after { background: #f46565; }
 .game-calendar-grid .game-day.draw {
   border-color: rgba(188, 188, 188, .40);
   background:
     radial-gradient(circle at 75% 20%, rgba(188, 188, 188, .15), transparent 58%),
     rgba(11, 10, 7, .94);
 }
-.game-calendar-grid .game-day.draw::after { background: #bdbdbd; }
 .game-day-copy {
   position: relative;
   z-index: 1;
@@ -2050,10 +2039,6 @@ a { color: inherit; text-decoration: none; }
     margin-top: 1px;
     font-size: 8px;
     letter-spacing: 0;
-  }
-  .game-calendar-grid .game-day.done::after {
-    inset: auto 7px 6px 7px;
-    height: 3px;
   }
   .game-day-copy b {
     max-width: 100%;
