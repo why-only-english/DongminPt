@@ -1059,7 +1059,6 @@ export function DashboardClient({
 
                   <div className="game-form-actions">
                     <button type="submit" disabled={gameSaving}>{gameSaving ? '저장 중' : selectedJeungbaramDay.record ? '수정 저장' : '기록 저장'}</button>
-                    {selectedJeungbaramDay.record && <button type="button" className="danger" onClick={removeJeungbaramRecord} disabled={gameSaving}>삭제</button>}
                   </div>
                 </form>
               )}
