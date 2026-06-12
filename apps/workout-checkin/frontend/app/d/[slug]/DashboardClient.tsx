@@ -5,6 +5,11 @@ import type { FormEvent } from 'react';
 import {
   addPhotoComment,
   addPhotoReaction,
+  deleteJeungbaramRecord,
+  fetchJeungbaramMonthly,
+  fetchJeungbaramParticipants,
+  fetchJeungbaramStats,
+  saveJeungbaramRecord,
   saveNotificationSubscription,
   uploadCheckinPhoto,
   fetchDashboardData,
@@ -18,6 +23,9 @@ import {
   type PhotoComment,
   type PhotoDay,
   type PhotoItem,
+  type JeungbaramDay,
+  type JeungbaramMonthly,
+  type JeungbaramStats,
   type MemberSummary,
 } from '@/lib/dashboard-data';
 
@@ -72,7 +80,7 @@ function formatCommentTime(value?: string) {
   }).format(parsed);
 }
 
-function formatMonthTitle(days: AttendanceDay[]) {
+function formatMonthTitle(days: Array<{ date: string }>) {
   const firstDay = days[0]?.date;
   if (!firstDay) return '이번 달';
   const parsed = new Date(`${firstDay}T00:00:00+09:00`);
@@ -80,7 +88,7 @@ function formatMonthTitle(days: AttendanceDay[]) {
   return new Intl.DateTimeFormat('ko-KR', { year: 'numeric', month: 'long' }).format(parsed);
 }
 
-function mondayFirstBlankCount(days: AttendanceDay[]) {
+function mondayFirstBlankCount(days: Array<{ date: string }>) {
   const firstDay = days[0]?.date;
   if (!firstDay) return 0;
   const parsed = new Date(`${firstDay}T00:00:00+09:00`);
@@ -90,6 +98,34 @@ function mondayFirstBlankCount(days: AttendanceDay[]) {
 
 function initials(name: string) {
   return name.slice(0, 1).toUpperCase();
+}
+
+
+function emptyJeungbaramMonthly(days: Array<{ date: string }>): JeungbaramMonthly {
+  return {
+    month: days[0]?.date.slice(0, 7) ?? '',
+    days: days.map((day) => ({ date: day.date, record: null })),
+  };
+}
+
+function emptyJeungbaramStats(): JeungbaramStats {
+  return { wins: 0, losses: 0, total_games: 0, win_rate: 0 };
+}
+
+function formatWinRate(rate: number) {
+  if (!Number.isFinite(rate)) return '0%';
+  return `${Number.isInteger(rate) ? rate.toFixed(0) : rate.toFixed(1)}%`;
+}
+
+function winRateTone(rate: number) {
+  if (!Number.isFinite(rate)) return 'draw';
+  if (rate > 50) return 'win';
+  if (rate < 50) return 'lose';
+  return 'draw';
+}
+
+function clampNumberInput(value: string) {
+  return value.replace(/[^0-9]/g, '').slice(0, 4);
 }
 
 function urlBase64ToUint8Array(base64String: string) {
@@ -164,7 +200,9 @@ export function DashboardClient({
 }: DashboardClientProps) {
   const [activeIndex, setActiveIndex] = useState(0);
   const [isMonthOpen, setIsMonthOpen] = useState(false);
+  const [isJeungbaramOpen, setIsJeungbaramOpen] = useState(false);
   const [selectedDay, setSelectedDay] = useState<PhotoDay | null>(null);
+  const [selectedJeungbaramDay, setSelectedJeungbaramDay] = useState<JeungbaramDay | null>(null);
   const [selectedPhoto, setSelectedPhoto] = useState<PhotoItem | null>(null);
   const [dashboardData, setDashboardData] = useState<DashboardData>({
     source,
@@ -182,6 +220,7 @@ export function DashboardClient({
   );
   const [authError, setAuthError] = useState('');
   const commentTextRef = useRef<HTMLTextAreaElement>(null);
+  const gameRecordPanelRef = useRef<HTMLFormElement>(null);
   const [commentsByPhoto, setCommentsByPhoto] = useState<Record<string, PhotoComment[]>>({});
   const [reactionCounts, setReactionCounts] = useState<Record<string, Partial<Record<ReactionLabel, number>>>>({});
   const [detailError, setDetailError] = useState('');
@@ -190,6 +229,15 @@ export function DashboardClient({
   const [uploadMessage, setUploadMessage] = useState('');
   const [notificationStatus, setNotificationStatus] = useState<'idle' | 'unsupported' | 'needs-home-screen' | 'requesting' | 'enabled' | 'denied' | 'error'>('idle');
   const [notificationMessage, setNotificationMessage] = useState('');
+  const [jeungbaramMonthly, setJeungbaramMonthly] = useState<JeungbaramMonthly>(() => emptyJeungbaramMonthly(initialMonthDays));
+  const [jeungbaramStats, setJeungbaramStats] = useState<JeungbaramStats>(() => emptyJeungbaramStats());
+  const [jeungbaramParticipants, setJeungbaramParticipants] = useState<string[]>([]);
+  const [jeungbaramLoading, setJeungbaramLoading] = useState(false);
+  const [jeungbaramError, setJeungbaramError] = useState('');
+  const [gameWins, setGameWins] = useState('');
+  const [gameLosses, setGameLosses] = useState('');
+  const [gameParticipants, setGameParticipants] = useState<string[]>([]);
+  const [gameSaving, setGameSaving] = useState(false);
   const modalHistoryRef = useRef(false);
   const { summary, todayPhotos, weekDays, monthDays } = dashboardData;
   const safeTodayPhotos = todayPhotos.length ? todayPhotos : [];
@@ -201,7 +249,9 @@ export function DashboardClient({
 
   function clearOverlayState() {
     setIsMonthOpen(false);
+    setIsJeungbaramOpen(false);
     setSelectedDay(null);
+    setSelectedJeungbaramDay(null);
     setSelectedPhoto(null);
   }
 
@@ -222,15 +272,124 @@ export function DashboardClient({
   function openMonthCalendar() {
     openOverlayHistory();
     setIsMonthOpen(true);
+    setIsJeungbaramOpen(false);
     setSelectedDay(null);
+    setSelectedJeungbaramDay(null);
     setSelectedPhoto(null);
+  }
+
+  function openJeungbaramCalendar() {
+    openOverlayHistory();
+    setIsJeungbaramOpen(true);
+    setIsMonthOpen(false);
+    setSelectedDay(null);
+    setSelectedJeungbaramDay(null);
+    setSelectedPhoto(null);
+    void loadJeungbaram();
   }
 
   function openDayPhotos(day: PhotoDay) {
     openOverlayHistory();
     setSelectedDay(day);
     setIsMonthOpen(false);
+    setIsJeungbaramOpen(false);
+    setSelectedJeungbaramDay(null);
     setSelectedPhoto(null);
+  }
+
+
+  async function loadJeungbaram(month = jeungbaramMonthly.month || monthDays[0]?.date.slice(0, 7)) {
+    if (source !== 'api' || !sessionToken) return;
+    setJeungbaramLoading(true);
+    setJeungbaramError('');
+    try {
+      const [monthly, stats, participants] = await Promise.all([
+        fetchJeungbaramMonthly(slug, sessionToken, month || undefined),
+        fetchJeungbaramStats(slug, sessionToken),
+        fetchJeungbaramParticipants(slug, sessionToken),
+      ]);
+      setJeungbaramMonthly(monthly);
+      setJeungbaramStats(stats);
+      setJeungbaramParticipants(participants);
+      if (selectedJeungbaramDay) {
+        setSelectedJeungbaramDay(monthly.days.find((day) => day.date === selectedJeungbaramDay.date) ?? null);
+      }
+    } catch {
+      setJeungbaramError('증바람 기록을 불러오지 못했어. 잠시 후 다시 열어줘.');
+    } finally {
+      setJeungbaramLoading(false);
+    }
+  }
+
+  function openJeungbaramRecord(day: JeungbaramDay) {
+    setSelectedJeungbaramDay(day);
+    setGameWins(day.record ? String(day.record.wins) : '');
+    setGameLosses(day.record ? String(day.record.losses) : '');
+    setGameParticipants(day.record?.participants ?? []);
+    setJeungbaramError('');
+    window.setTimeout(() => {
+      gameRecordPanelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }, 0);
+  }
+
+  function toggleGameParticipant(participant: string) {
+    setGameParticipants((current) => {
+      if (current.includes(participant)) return current.filter((item) => item !== participant);
+      if (current.length >= 5) return current;
+      return [...current, participant];
+    });
+  }
+
+  async function submitJeungbaramRecord(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!selectedJeungbaramDay || !sessionToken) return;
+    const wins = Number(gameWins || 0);
+    const losses = Number(gameLosses || 0);
+    if (!Number.isInteger(wins) || !Number.isInteger(losses) || wins < 0 || losses < 0 || wins + losses <= 0) {
+      setJeungbaramError('승/패를 숫자로 입력해줘. 최소 1판 이상이어야 해.');
+      return;
+    }
+    if (gameParticipants.length < 1 || gameParticipants.length > 5) {
+      setJeungbaramError('참석자는 1명 이상, 최대 5명까지 선택해줘.');
+      return;
+    }
+    setGameSaving(true);
+    setJeungbaramError('');
+    try {
+      const record = await saveJeungbaramRecord(slug, sessionToken, selectedJeungbaramDay.date, { wins, losses, participants: gameParticipants });
+      setJeungbaramMonthly((current) => ({
+        ...current,
+        days: current.days.map((day) => day.date === record.date ? { ...day, record } : day),
+      }));
+      setSelectedJeungbaramDay((current) => current ? { ...current, record } : current);
+      setJeungbaramStats(await fetchJeungbaramStats(slug, sessionToken));
+    } catch {
+      setJeungbaramError('저장에 실패했어. 입력값을 확인하고 다시 해줘.');
+    } finally {
+      setGameSaving(false);
+    }
+  }
+
+  async function removeJeungbaramRecord() {
+    if (!selectedJeungbaramDay?.record || !sessionToken || gameSaving) return;
+    setGameSaving(true);
+    setJeungbaramError('');
+    try {
+      await deleteJeungbaramRecord(slug, sessionToken, selectedJeungbaramDay.date);
+      setJeungbaramMonthly((current) => ({
+        ...current,
+        days: current.days.map((day) => day.date === selectedJeungbaramDay.date ? { ...day, record: null } : day),
+      }));
+      setSelectedJeungbaramDay((current) => current ? { ...current, record: null } : current);
+      setGameWins('');
+      setGameLosses('');
+      setGameParticipants([]);
+      setJeungbaramStats(await fetchJeungbaramStats(slug, sessionToken));
+    } catch {
+      setJeungbaramError('삭제에 실패했어. 잠시 후 다시 해줘.');
+    } finally {
+      setGameSaving(false);
+    }
   }
 
   useEffect(() => {
@@ -290,6 +449,17 @@ export function DashboardClient({
   }, [sessionToken, slug, source, todayPhotos]);
 
   useEffect(() => {
+    if (source !== 'api' || !sessionToken) return;
+    void Promise.all([fetchJeungbaramStats(slug, sessionToken), fetchJeungbaramParticipants(slug, sessionToken)])
+      .then(([stats, participants]) => {
+        setJeungbaramStats(stats);
+        setJeungbaramParticipants(participants);
+      })
+      .catch(() => undefined);
+  }, [sessionToken, slug, source]);
+
+
+  useEffect(() => {
     if (safeTodayPhotos.length <= 1) return;
     const id = window.setInterval(() => {
       setActiveIndex((current) => (current + 1) % safeTodayPhotos.length);
@@ -308,13 +478,13 @@ export function DashboardClient({
   }, []);
 
   useEffect(() => {
-    if (!isMonthOpen && !selectedDay && !selectedPhoto) return;
+    if (!isMonthOpen && !isJeungbaramOpen && !selectedDay && !selectedPhoto) return;
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') closeOverlay();
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [isMonthOpen, selectedDay, selectedPhoto]);
+  }, [isMonthOpen, isJeungbaramOpen, selectedDay, selectedPhoto]);
 
 
   useEffect(() => {
@@ -354,6 +524,10 @@ export function DashboardClient({
   const monthTitle = formatMonthTitle(monthDays);
   const monthBlankCount = mondayFirstBlankCount(monthDays);
   const monthTotalChecks = monthDays.reduce((sum, day) => sum + day.members.length, 0);
+  const gameMonthTitle = formatMonthTitle(jeungbaramMonthly.days);
+  const gameMonthBlankCount = mondayFirstBlankCount(jeungbaramMonthly.days);
+  const selectedGameTotal = Number(gameWins || 0) + Number(gameLosses || 0);
+  const selectedGameRate = selectedGameTotal ? Math.round((Number(gameWins || 0) / selectedGameTotal) * 1000) / 10 : 0;
   const weekdayLabels = ['월', '화', '수', '목', '금', '토', '일'];
   const weeklyPhotos = weekDays
     .flatMap((day) => day.photos.map((photo, index) => ({ ...photo, exercise_date: day.date, _day_order: index })))
@@ -659,6 +833,25 @@ export function DashboardClient({
               </div>
             </div>
 
+            <div className="panel game-entry-panel">
+              <div className="section-title with-action">
+                <div>
+                  <span>JEUNGBARAM</span>
+                  <h2>증바람 월간보기</h2>
+                  <p>게임한 날을 눌러 승/패와 참석자를 기록해요</p>
+                </div>
+                <button className="calendar-open game-open" type="button" onClick={openJeungbaramCalendar} aria-label="증바람 월간 달력 열기">
+                  <span className="calendar-icon game-icon" aria-hidden="true" />
+                  <span>증바람 보기</span>
+                </button>
+              </div>
+              <div className="game-entry-stats">
+                <div><span>누적 총판</span><strong>{jeungbaramStats.total_games}</strong></div>
+                <div><span>누적 승률</span><strong>{formatWinRate(jeungbaramStats.win_rate)}</strong></div>
+                <div><span>승 / 패</span><strong>{jeungbaramStats.wins}-{jeungbaramStats.losses}</strong></div>
+              </div>
+            </div>
+
             <div className="panel photo-panel">
               <div className="section-title"><div><span>WEEK PHOTO QUEUE</span><h2>주간 올라온 사진</h2></div><p>이번 주 인증 사진 전체를 모아봤어요</p></div>
               <div className="photo-grid compact-photos">
@@ -769,6 +962,109 @@ export function DashboardClient({
           </div>
         )}
 
+
+        {isJeungbaramOpen && (
+          <div className="month-modal-backdrop" role="dialog" aria-modal="true" aria-label="증바람 월간 달력">
+            <div className="month-modal game-modal">
+              <div className="month-modal-head">
+                <div>
+                  <span>JEUNGBARAM CALENDAR</span>
+                  <h2>{gameMonthTitle || '증바람 월간보기'}</h2>
+                  <p>색으로 승률을 보고, 날짜를 누르면 크게 펼쳐서 확인해요.</p>
+                </div>
+                <button type="button" className="month-close" onClick={closeOverlay} aria-label="증바람 달력 닫기">닫기</button>
+              </div>
+
+              <div className="month-summary-strip game-summary-strip">
+                <div><span>누적 총판</span><strong>{jeungbaramStats.total_games}</strong></div>
+                <div><span>누적 승률</span><strong>{formatWinRate(jeungbaramStats.win_rate)}</strong></div>
+                <div><span>누적 승패</span><strong>{jeungbaramStats.wins}-{jeungbaramStats.losses}</strong></div>
+              </div>
+
+              {jeungbaramLoading && <div className="game-notice">증바람 기록 불러오는 중...</div>}
+              {jeungbaramError && <div className="detail-error game-error">{jeungbaramError}</div>}
+
+              <div className="month-weekdays" aria-hidden="true">
+                {weekdayLabels.map((label) => <span key={`game-${label}`}>{label}</span>)}
+              </div>
+              <div className="month-calendar-grid game-calendar-grid" aria-label={`${gameMonthTitle} 증바람 기록`}>
+                {Array.from({ length: gameMonthBlankCount }).map((_, index) => <div className="month-day blank" key={`game-blank-${index}`} />)}
+                {jeungbaramMonthly.days.map((day) => {
+                  const record = day.record;
+                  const tone = record ? winRateTone(record.win_rate) : '';
+                  return (
+                    <button className={`month-day game-day ${record ? `done ${tone}` : ''} ${selectedJeungbaramDay?.date === day.date ? 'selected' : ''}`} type="button" key={`game-${day.date}`} onClick={() => openJeungbaramRecord(day)} aria-label={`${day.date} 증바람 ${record ? '상세 보기' : '기록하기'}`}>
+                      <div className="month-day-top">
+                        <strong>{formatDay(day.date)}</strong>
+                        {record && <em>{record.total_games}판</em>}
+                      </div>
+                      {record ? (
+                        <div className="game-day-copy">
+                          <b>{formatWinRate(record.win_rate)}</b>
+                        </div>
+                      ) : <span className="month-rest">기록</span>}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {selectedJeungbaramDay && (
+                <form ref={gameRecordPanelRef} className={`game-record-form ${selectedJeungbaramDay.record ? 'has-record' : 'is-empty-day'}`} onSubmit={submitJeungbaramRecord}>
+                  <div className="game-form-head">
+                    <div>
+                      <span>{selectedJeungbaramDay.record ? 'DAY DETAIL' : 'NEW RECORD'}</span>
+                      <strong>{formatWeekday(selectedJeungbaramDay.date)} {formatDay(selectedJeungbaramDay.date)}</strong>
+                    </div>
+                    <em>{selectedGameTotal ? `${selectedGameTotal}판 · ${formatWinRate(selectedGameRate)}` : '승/패 입력 대기'}</em>
+                  </div>
+
+                  {selectedJeungbaramDay.record && (
+                    <div className={`game-record-detail ${winRateTone(selectedJeungbaramDay.record.win_rate)}`}>
+                      <div className="game-detail-hero">
+                        <span>승률</span>
+                        <strong>{formatWinRate(selectedJeungbaramDay.record.win_rate)}</strong>
+                        <em>{selectedJeungbaramDay.record.total_games}판 기록</em>
+                      </div>
+                      <div className="game-detail-stats">
+                        <div><span>승리</span><strong>{selectedJeungbaramDay.record.wins}</strong></div>
+                        <div><span>패배</span><strong>{selectedJeungbaramDay.record.losses}</strong></div>
+                      </div>
+                      <div className="game-detail-participants">
+                        <span>참가자</span>
+                        <div>
+                          {selectedJeungbaramDay.record.participants.map((participant) => <b key={`${selectedJeungbaramDay.date}-${participant}`}>{participant}</b>)}
+                        </div>
+                      </div>
+                      <button type="button" className="game-detail-delete" onClick={removeJeungbaramRecord} disabled={gameSaving}>
+                        이 날 기록 삭제
+                      </button>
+                    </div>
+                  )}
+
+                  <div className="game-score-inputs">
+                    <label><span>승</span><input inputMode="numeric" value={gameWins} onChange={(event) => setGameWins(clampNumberInput(event.target.value))} placeholder="0" /></label>
+                    <label><span>패</span><input inputMode="numeric" value={gameLosses} onChange={(event) => setGameLosses(clampNumberInput(event.target.value))} placeholder="0" /></label>
+                  </div>
+
+                  <div className="game-participants" aria-label="증바람 참석자 선택">
+                    <div className="game-participants-head"><span>참석자</span><strong>{gameParticipants.length}/5</strong></div>
+                    <div className="game-participant-grid">
+                      {jeungbaramParticipants.length ? jeungbaramParticipants.map((participant) => (
+                        <button className={gameParticipants.includes(participant) ? 'selected' : ''} type="button" key={participant} onClick={() => toggleGameParticipant(participant)} aria-pressed={gameParticipants.includes(participant)}>
+                          {participant}
+                        </button>
+                      )) : <div className="game-participant-empty">참석자 목록 불러오는 중</div>}
+                    </div>
+                  </div>
+
+                  <div className="game-form-actions">
+                    <button type="submit" disabled={gameSaving}>{gameSaving ? '저장 중' : selectedJeungbaramDay.record ? '수정 저장' : '기록 저장'}</button>
+                  </div>
+                </form>
+              )}
+            </div>
+          </div>
+        )}
 
         {isMonthOpen && (
           <div className="month-modal-backdrop" role="dialog" aria-modal="true" aria-label="월간 운동 캘린더">

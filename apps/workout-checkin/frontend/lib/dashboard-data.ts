@@ -45,6 +45,41 @@ export type DashboardSummary = {
   members: MemberSummary[];
 };
 
+
+export type JeungbaramRecord = {
+  id?: string;
+  date: string;
+  wins: number;
+  losses: number;
+  total_games: number;
+  win_rate: number;
+  participants: string[];
+  updated_at?: string;
+};
+
+export type JeungbaramDay = {
+  date: string;
+  record: JeungbaramRecord | null;
+};
+
+export type JeungbaramMonthly = {
+  month: string;
+  days: JeungbaramDay[];
+};
+
+export type JeungbaramStats = {
+  wins: number;
+  losses: number;
+  total_games: number;
+  win_rate: number;
+};
+
+export type JeungbaramRecordInput = {
+  wins: number;
+  losses: number;
+  participants: string[];
+};
+
 const mockMembers: MemberSummary[] = [
   { nickname: '민수', approved_days: 3, remaining_required: 0, status: 'safe', status_label: '완료 ✅', expected_penalty: 0 },
   { nickname: '지훈', approved_days: 2, remaining_required: 1, status: 'normal', status_label: '진행중', expected_penalty: 0 },
@@ -166,6 +201,42 @@ export async function addPhotoComment(slug: string, imageId: string, token: stri
     body: JSON.stringify({ text }),
   });
   return result.comment;
+}
+
+
+export async function fetchJeungbaramMonthly(slug: string, token: string, month?: string): Promise<JeungbaramMonthly> {
+  const base = requireApiBaseUrl();
+  const query = month ? `?month=${encodeURIComponent(month)}` : '';
+  return fetchJson<JeungbaramMonthly>(`${base}/groups/${encodeURIComponent(slug)}/jeungbaram/monthly${query}`, { token });
+}
+
+export async function fetchJeungbaramStats(slug: string, token: string): Promise<JeungbaramStats> {
+  const base = requireApiBaseUrl();
+  return fetchJson<JeungbaramStats>(`${base}/groups/${encodeURIComponent(slug)}/jeungbaram/stats`, { token });
+}
+
+export async function fetchJeungbaramParticipants(slug: string, token: string): Promise<string[]> {
+  const base = requireApiBaseUrl();
+  const result = await fetchJson<{ participants: string[] }>(`${base}/groups/${encodeURIComponent(slug)}/jeungbaram/participants`, { token });
+  return result.participants;
+}
+
+export async function saveJeungbaramRecord(slug: string, token: string, date: string, input: JeungbaramRecordInput): Promise<JeungbaramRecord> {
+  const base = requireApiBaseUrl();
+  const result = await fetchJson<{ record: JeungbaramRecord }>(`${base}/groups/${encodeURIComponent(slug)}/jeungbaram/records/${encodeURIComponent(date)}`, {
+    token,
+    method: 'PUT',
+    body: JSON.stringify(input),
+  });
+  return result.record;
+}
+
+export async function deleteJeungbaramRecord(slug: string, token: string, date: string): Promise<void> {
+  const base = requireApiBaseUrl();
+  await fetchJson<{ ok: boolean }>(`${base}/groups/${encodeURIComponent(slug)}/jeungbaram/records/${encodeURIComponent(date)}`, {
+    token,
+    method: 'DELETE',
+  });
 }
 
 export async function saveNotificationSubscription(slug: string, token: string, subscription: PushSubscription, platform: string): Promise<NotificationSubscriptionResponse> {
