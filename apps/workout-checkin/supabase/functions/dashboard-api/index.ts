@@ -22,6 +22,74 @@ type PushSubscriptionPayload = {
   keys?: { p256dh?: string; auth?: string };
 };
 
+
+const JEUNGBARAM_PARTICIPANTS = [
+  '죽는거잘해요',
+  'Messi',
+  '갑도징어',
+  '이런4가지없는너미',
+  '수돗물',
+  '21Climax',
+  'dlwltjd',
+  '외부인',
+] as const;
+
+function isDateString(value: string): boolean {
+  const match = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) return false;
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const parsed = new Date(Date.UTC(year, month - 1, day));
+  return parsed.getUTCFullYear() === year && parsed.getUTCMonth() === month - 1 && parsed.getUTCDate() === day;
+}
+
+function isMonthString(value: string): boolean {
+  const match = value.match(/^(\d{4})-(\d{2})$/);
+  if (!match) return false;
+  const month = Number(match[2]);
+  return month >= 1 && month <= 12;
+}
+
+function jeungbaramRecord(row: any) {
+  const wins = Number(row.wins ?? 0);
+  const losses = Number(row.losses ?? 0);
+  const totalGames = wins + losses;
+  return {
+    id: row.id,
+    date: row.record_date,
+    wins,
+    losses,
+    total_games: totalGames,
+    win_rate: totalGames ? Math.round((wins / totalGames) * 1000) / 10 : 0,
+    participants: Array.isArray(row.participants) ? row.participants : [],
+    updated_at: row.updated_at,
+  };
+}
+
+function validateJeungbaramBody(body: any) {
+  const wins = Number(body?.wins);
+  const losses = Number(body?.losses);
+  const participants = Array.isArray(body?.participants)
+    ? body.participants.map((item: unknown) => String(item).trim()).filter(Boolean)
+    : [];
+  const allowed = new Set<string>(JEUNGBARAM_PARTICIPANTS);
+  const uniqueParticipants = [...new Set(participants)];
+
+  if (!Number.isInteger(wins) || !Number.isInteger(losses) || wins < 0 || losses < 0) {
+    throw new Response('invalid_wins_losses', { status: 400 });
+  }
+  if (wins + losses <= 0) throw new Response('games_required', { status: 400 });
+  if (uniqueParticipants.length < 1 || uniqueParticipants.length > 5) {
+    throw new Response('participants_must_be_1_to_5', { status: 400 });
+  }
+  if (uniqueParticipants.some((participant) => !allowed.has(participant))) {
+    throw new Response('invalid_participant', { status: 400 });
+  }
+
+  return { wins, losses, participants: uniqueParticipants };
+}
+
 function kstDayStartIso(dateString: string): string {
   return new Date(Date.parse(`${dateString}T00:00:00+09:00`)).toISOString();
 }
@@ -174,6 +242,43 @@ async function dashboardSummary(supabase: ServiceClient, group: any) {
   return { week_start: start, week_end: end, required_days: group.weekly_required_days, penalty_amount_krw: group.penalty_amount_krw, members: membersSummary };
 }
 
+
+async function jeungbaramMonthly(supabase: ServiceClient, groupId: string, monthParam: string | null) {
+  if (monthParam !== null && !isMonthString(monthParam)) throw new Response('invalid_month', { status: 400 });
+  const month = monthParam ?? todayKst().slice(0, 7);
+  const start = `${month}-01`;
+  const endDate = monthEndDate(start);
+  const { data } = await supabase
+    .from('jeungbaram_records')
+    .select('id, record_date, wins, losses, participants, updated_at')
+    .eq('group_id', groupId)
+    .gte('record_date', start)
+    .lt('record_date', endDate)
+    .order('record_date', { ascending: true });
+  const records = new Map<string, any>();
+  for (const row of data ?? []) records.set((row as any).record_date, jeungbaramRecord(row));
+  return {
+    month,
+    days: monthDates(start).map((date) => ({ date, record: records.get(date) ?? null })),
+  };
+}
+
+async function jeungbaramStats(supabase: ServiceClient, groupId: string) {
+  const { data } = await supabase
+    .from('jeungbaram_records')
+    .select('wins, losses')
+    .eq('group_id', groupId);
+  const wins = (data ?? []).reduce((sum, row: any) => sum + Number(row.wins ?? 0), 0);
+  const losses = (data ?? []).reduce((sum, row: any) => sum + Number(row.losses ?? 0), 0);
+  const totalGames = wins + losses;
+  return {
+    wins,
+    losses,
+    total_games: totalGames,
+    win_rate: totalGames ? Math.round((wins / totalGames) * 1000) / 10 : 0,
+  };
+}
+
 Deno.serve(async (req) => {
   const pf = preflight(req); if (pf) return pf;
   const path = pathAfterFunction(req);
@@ -229,6 +334,49 @@ Deno.serve(async (req) => {
       const days = Array.from({ length: 7 }, (_, i) => ({ date: addDays(start, i), photos: [] as unknown[] }));
       for (const row of rows ?? []) days.find((day) => day.date === row.exercise_date)?.photos.push(await signedPhoto(client, row));
       return jsonResponse({ days });
+    }
+
+    const jeungbaramCollectionMatch = path.match(/^\/groups\/([^/]+)\/jeungbaram\/(monthly|stats|participants)$/);
+    if (req.method === 'GET' && jeungbaramCollectionMatch) {
+      const slug = decodeURIComponent(jeungbaramCollectionMatch[1]);
+      const endpoint = jeungbaramCollectionMatch[2];
+      const { supabase: client, group } = await requireSession(req, slug);
+      if (endpoint === 'monthly') return jsonResponse(await jeungbaramMonthly(client, group.id, new URL(req.url).searchParams.get('month')));
+      if (endpoint === 'participants') return jsonResponse({ participants: JEUNGBARAM_PARTICIPANTS });
+      return jsonResponse(await jeungbaramStats(client, group.id));
+    }
+
+    const jeungbaramRecordMatch = path.match(/^\/groups\/([^/]+)\/jeungbaram\/records\/(\d{4}-\d{2}-\d{2})$/);
+    if (jeungbaramRecordMatch && (req.method === 'PUT' || req.method === 'DELETE')) {
+      const slug = decodeURIComponent(jeungbaramRecordMatch[1]);
+      const recordDate = jeungbaramRecordMatch[2];
+      if (!isDateString(recordDate)) return jsonResponse({ error: 'invalid_date' }, { status: 400 });
+      const { supabase: client, session, group } = await requireSession(req, slug);
+      const user = await userForSession(client, group, session);
+
+      if (req.method === 'DELETE') {
+        const { error } = await client
+          .from('jeungbaram_records')
+          .delete()
+          .eq('group_id', group.id)
+          .eq('record_date', recordDate);
+        if (error) throw error;
+        return jsonResponse({ ok: true, deleted: true, date: recordDate });
+      }
+
+      const payload = validateJeungbaramBody(await req.json());
+      const { data, error } = await client
+        .rpc('upsert_jeungbaram_record', {
+          p_group_id: group.id,
+          p_record_date: recordDate,
+          p_wins: payload.wins,
+          p_losses: payload.losses,
+          p_participants: payload.participants,
+          p_user_id: user.id,
+        })
+        .single();
+      if (error) throw error;
+      return jsonResponse({ record: jeungbaramRecord(data) });
     }
 
     const notificationMatch = path.match(/^\/groups\/([^/]+)\/notifications\/(subscribe|unsubscribe)$/);
