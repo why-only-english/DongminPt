@@ -202,6 +202,17 @@ function starterReactionCounts(photo: Pick<PhotoItem, 'nickname' | 'exercise_dat
   };
 }
 
+function mergeComments(current: PhotoComment[], incoming: PhotoComment[]) {
+  const seen = new Set<string>();
+  const keyFor = (comment: PhotoComment) => comment.id ?? `${comment.author}:${comment.text}:${comment.created_at ?? ''}`;
+  return [...incoming, ...current].filter((comment) => {
+    const key = keyFor(comment);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
 function photoVisual(photo: PhotoItem, large = false) {
   if (photo.image_url) {
     return <img className={large ? 'spotlight-img' : 'photo-img'} src={photo.image_url} alt={`${photo.nickname} 운동 인증`} />;
@@ -622,7 +633,7 @@ export function DashboardClient({
     .flatMap((day) => day.photos.map((photo, index) => ({ ...photo, exercise_date: day.date, _day_order: index })))
     .sort((a, b) => b.exercise_date.localeCompare(a.exercise_date) || a._day_order - b._day_order);
   const selectedPhotoKey = selectedPhoto ? photoKey(selectedPhoto) : '';
-  const selectedComments = selectedPhoto ? (commentsByPhoto[selectedPhotoKey] ?? starterComments(selectedPhoto)) : [];
+  const selectedComments = selectedPhoto ? (commentsByPhoto[selectedPhotoKey] ?? (source === 'mock' ? starterComments(selectedPhoto) : [])) : [];
 
   async function handleLogin(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -716,11 +727,13 @@ export function DashboardClient({
     setSelectedDay(null);
     setDetailError('');
     const key = photoKey(photo);
-    setCommentsByPhoto((current) => current[key] ? current : { ...current, [key]: starterComments(photo) });
-    setReactionCounts((current) => current[key] ? current : { ...current, [key]: { ...starterReactionCounts(photo), ...photo.reaction_counts } });
+    const initialComments = source === 'mock' ? starterComments(photo) : [];
+    const initialReactions = source === 'mock' ? { ...starterReactionCounts(photo), ...photo.reaction_counts } : { ...photo.reaction_counts };
+    setCommentsByPhoto((current) => current[key] ? current : { ...current, [key]: initialComments });
+    setReactionCounts((current) => current[key] ? current : { ...current, [key]: initialReactions });
     if (source === 'api' && sessionToken && photo.image_id) {
       fetchPhotoComments(slug, photo.image_id, sessionToken)
-        .then((comments) => setCommentsByPhoto((current) => ({ ...current, [key]: comments })))
+        .then((comments) => setCommentsByPhoto((current) => ({ ...current, [key]: mergeComments(current[key] ?? [], comments) })))
         .catch(() => undefined);
     }
   }
@@ -762,7 +775,7 @@ export function DashboardClient({
     const insertComment = (comment: PhotoComment) => {
       setCommentsByPhoto((current) => ({
         ...current,
-        [key]: [...(current[key] ?? starterComments(selectedPhoto)), comment],
+        [key]: [...(current[key] ?? (source === 'mock' ? starterComments(selectedPhoto) : [])), comment],
       }));
     };
     if (source === 'api' && sessionToken && selectedPhoto.image_id) {
