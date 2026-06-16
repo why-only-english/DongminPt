@@ -1939,6 +1939,90 @@ a { color: inherit; text-decoration: none; }
   opacity: .58;
   cursor: wait;
 }
+.game-session-list {
+  display: grid;
+  grid-column: 1 / -1;
+  gap: 8px;
+}
+.game-session-list button {
+  display: grid;
+  grid-template-columns: auto auto 1fr;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid rgba(202,187,169,.14);
+  border-radius: 16px;
+  padding: 10px 12px;
+  color: var(--muted);
+  background: rgba(255,255,255,.035);
+  text-align: left;
+  cursor: pointer;
+}
+.game-session-list button.selected {
+  border-color: rgba(216,166,95,.70);
+  background: rgba(216,166,95,.12);
+}
+.game-session-list span {
+  color: var(--gold);
+  font-size: 11px;
+  font-weight: 1000;
+  letter-spacing: .08em;
+}
+.game-session-list strong {
+  color: var(--ink);
+  font-size: 18px;
+  line-height: 1;
+}
+.game-session-list em {
+  justify-self: end;
+  color: var(--muted-2);
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 900;
+}
+.game-edit-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  border: 1px solid rgba(202,187,169,.12);
+  border-radius: 18px;
+  padding: 12px;
+  margin-bottom: 12px;
+  background: rgba(255,255,255,.035);
+}
+.game-edit-head span {
+  display: block;
+  color: var(--muted-2);
+  font-size: 10px;
+  font-weight: 1000;
+  letter-spacing: .12em;
+}
+.game-edit-head strong {
+  display: block;
+  margin-top: 4px;
+  color: var(--ink);
+  font-size: 20px;
+  line-height: 1;
+}
+.game-edit-head button {
+  border: 1px solid rgba(216,166,95,.36);
+  border-radius: 999px;
+  padding: 9px 12px;
+  color: var(--gold);
+  background: rgba(216,166,95,.10);
+  font-size: 12px;
+  font-weight: 1000;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.game-edit-head button:disabled { opacity: .58; cursor: wait; }
+.selected-session-participants {
+  margin-bottom: 12px;
+}
+.selected-session-participants .game-detail-delete {
+  width: 100%;
+  margin-top: 12px;
+}
 .game-score-inputs {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -2052,6 +2136,17 @@ a { color: inherit; text-decoration: none; }
   .game-record-detail { grid-template-columns: 1fr; }
   .game-detail-hero { grid-row: auto; }
   .game-detail-hero strong { font-size: 58px; }
+  .game-session-list button {
+    grid-template-columns: 1fr auto;
+    gap: 6px;
+  }
+  .game-session-list em {
+    grid-column: 1 / -1;
+    justify-self: start;
+  }
+  .game-edit-head {
+    align-items: stretch;
+  }
 }
 .game-participant-empty {
   grid-column: 1 / -1;

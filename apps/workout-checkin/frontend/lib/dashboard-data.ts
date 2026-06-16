@@ -47,18 +47,20 @@ export type DashboardSummary = {
 
 
 export type JeungbaramRecord = {
-  id?: string;
+  id: string;
   date: string;
   wins: number;
   losses: number;
   total_games: number;
   win_rate: number;
   participants: string[];
+  created_at?: string;
   updated_at?: string;
 };
 
 export type JeungbaramDay = {
   date: string;
+  records: JeungbaramRecord[];
   record: JeungbaramRecord | null;
 };
 
@@ -221,19 +223,22 @@ export async function fetchJeungbaramParticipants(slug: string, token: string): 
   return result.participants;
 }
 
-export async function saveJeungbaramRecord(slug: string, token: string, date: string, input: JeungbaramRecordInput): Promise<JeungbaramRecord> {
+export async function saveJeungbaramRecord(slug: string, token: string, date: string, input: JeungbaramRecordInput, recordId?: string): Promise<JeungbaramRecord> {
   const base = requireApiBaseUrl();
-  const result = await fetchJson<{ record: JeungbaramRecord }>(`${base}/groups/${encodeURIComponent(slug)}/jeungbaram/records/${encodeURIComponent(date)}`, {
+  const path = recordId
+    ? `${base}/groups/${encodeURIComponent(slug)}/jeungbaram/records/${encodeURIComponent(date)}/${encodeURIComponent(recordId)}`
+    : `${base}/groups/${encodeURIComponent(slug)}/jeungbaram/records/${encodeURIComponent(date)}`;
+  const result = await fetchJson<{ record: JeungbaramRecord }>(path, {
     token,
-    method: 'PUT',
+    method: recordId ? 'PUT' : 'POST',
     body: JSON.stringify(input),
   });
   return result.record;
 }
 
-export async function deleteJeungbaramRecord(slug: string, token: string, date: string): Promise<void> {
+export async function deleteJeungbaramRecord(slug: string, token: string, date: string, recordId: string): Promise<void> {
   const base = requireApiBaseUrl();
-  await fetchJson<{ ok: boolean }>(`${base}/groups/${encodeURIComponent(slug)}/jeungbaram/records/${encodeURIComponent(date)}`, {
+  await fetchJson<{ ok: boolean }>(`${base}/groups/${encodeURIComponent(slug)}/jeungbaram/records/${encodeURIComponent(date)}/${encodeURIComponent(recordId)}`, {
     token,
     method: 'DELETE',
   });

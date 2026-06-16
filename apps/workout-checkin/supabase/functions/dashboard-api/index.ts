@@ -63,6 +63,7 @@ function jeungbaramRecord(row: any) {
     total_games: totalGames,
     win_rate: totalGames ? Math.round((wins / totalGames) * 1000) / 10 : 0,
     participants: Array.isArray(row.participants) ? row.participants : [],
+    created_at: row.created_at,
     updated_at: row.updated_at,
   };
 }
@@ -250,16 +251,25 @@ async function jeungbaramMonthly(supabase: ServiceClient, groupId: string, month
   const endDate = monthEndDate(start);
   const { data } = await supabase
     .from('jeungbaram_records')
-    .select('id, record_date, wins, losses, participants, updated_at')
+    .select('id, record_date, wins, losses, participants, created_at, updated_at')
     .eq('group_id', groupId)
     .gte('record_date', start)
     .lt('record_date', endDate)
-    .order('record_date', { ascending: true });
-  const records = new Map<string, any>();
-  for (const row of data ?? []) records.set((row as any).record_date, jeungbaramRecord(row));
+    .order('record_date', { ascending: true })
+    .order('created_at', { ascending: true });
+  const records = new Map<string, any[]>();
+  for (const row of data ?? []) {
+    const date = (row as any).record_date;
+    const dayRecords = records.get(date) ?? [];
+    dayRecords.push(jeungbaramRecord(row));
+    records.set(date, dayRecords);
+  }
   return {
     month,
-    days: monthDates(start).map((date) => ({ date, record: records.get(date) ?? null })),
+    days: monthDates(start).map((date) => {
+      const dayRecords = records.get(date) ?? [];
+      return { date, records: dayRecords, record: dayRecords[0] ?? null };
+    }),
   };
 }
 
@@ -346,10 +356,11 @@ Deno.serve(async (req) => {
       return jsonResponse(await jeungbaramStats(client, group.id));
     }
 
-    const jeungbaramRecordMatch = path.match(/^\/groups\/([^/]+)\/jeungbaram\/records\/(\d{4}-\d{2}-\d{2})$/);
-    if (jeungbaramRecordMatch && (req.method === 'PUT' || req.method === 'DELETE')) {
-      const slug = decodeURIComponent(jeungbaramRecordMatch[1]);
-      const recordDate = jeungbaramRecordMatch[2];
+    const jeungbaramRecordItemMatch = path.match(/^\/groups\/([^/]+)\/jeungbaram\/records\/(\d{4}-\d{2}-\d{2})\/([0-9a-fA-F-]{36})$/);
+    if (jeungbaramRecordItemMatch && (req.method === 'PUT' || req.method === 'DELETE')) {
+      const slug = decodeURIComponent(jeungbaramRecordItemMatch[1]);
+      const recordDate = jeungbaramRecordItemMatch[2];
+      const recordId = jeungbaramRecordItemMatch[3];
       if (!isDateString(recordDate)) return jsonResponse({ error: 'invalid_date' }, { status: 400 });
       const { supabase: client, session, group } = await requireSession(req, slug);
       const user = await userForSession(client, group, session);
@@ -359,21 +370,52 @@ Deno.serve(async (req) => {
           .from('jeungbaram_records')
           .delete()
           .eq('group_id', group.id)
-          .eq('record_date', recordDate);
+          .eq('record_date', recordDate)
+          .eq('id', recordId);
         if (error) throw error;
-        return jsonResponse({ ok: true, deleted: true, date: recordDate });
+        return jsonResponse({ ok: true, deleted: true, id: recordId, date: recordDate });
       }
 
       const payload = validateJeungbaramBody(await req.json());
       const { data, error } = await client
-        .rpc('upsert_jeungbaram_record', {
-          p_group_id: group.id,
-          p_record_date: recordDate,
-          p_wins: payload.wins,
-          p_losses: payload.losses,
-          p_participants: payload.participants,
-          p_user_id: user.id,
+        .from('jeungbaram_records')
+        .update({
+          wins: payload.wins,
+          losses: payload.losses,
+          participants: payload.participants,
+          updated_by_user_id: user.id,
+          updated_at: new Date().toISOString(),
         })
+        .eq('group_id', group.id)
+        .eq('record_date', recordDate)
+        .eq('id', recordId)
+        .select('id, record_date, wins, losses, participants, created_at, updated_at')
+        .single();
+      if (error) throw error;
+      return jsonResponse({ record: jeungbaramRecord(data) });
+    }
+
+    const jeungbaramRecordMatch = path.match(/^\/groups\/([^/]+)\/jeungbaram\/records\/(\d{4}-\d{2}-\d{2})$/);
+    if (jeungbaramRecordMatch && (req.method === 'POST' || req.method === 'PUT')) {
+      const slug = decodeURIComponent(jeungbaramRecordMatch[1]);
+      const recordDate = jeungbaramRecordMatch[2];
+      if (!isDateString(recordDate)) return jsonResponse({ error: 'invalid_date' }, { status: 400 });
+      const { supabase: client, session, group } = await requireSession(req, slug);
+      const user = await userForSession(client, group, session);
+
+      const payload = validateJeungbaramBody(await req.json());
+      const { data, error } = await client
+        .from('jeungbaram_records')
+        .insert({
+          group_id: group.id,
+          record_date: recordDate,
+          wins: payload.wins,
+          losses: payload.losses,
+          participants: payload.participants,
+          created_by_user_id: user.id,
+          updated_by_user_id: user.id,
+        })
+        .select('id, record_date, wins, losses, participants, created_at, updated_at')
         .single();
       if (error) throw error;
       return jsonResponse({ record: jeungbaramRecord(data) });
