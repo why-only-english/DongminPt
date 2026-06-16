@@ -35,6 +35,11 @@
 - 주간/월간 운동 캘린더
 - 사진 상세 팝업
 - 댓글/이모지 반응
+- 댓글 작성자/작성 시간 표시
+- 실제 운영 모드에서 mock 댓글 깜빡임 방지
+- 증바람 월간보기
+- 증바람 하루 여러 회차 기록
+- 증바람 개인별 참여 판수 랭킹
 - 사진 원본은 Supabase Storage에 private 저장
 - 사진 URL은 signed URL로만 발급
 - 사진/댓글/반응은 주간 만료 정책으로 정리 가능
@@ -81,6 +86,7 @@ flowchart TD
   │   ├─ 대시보드 조회
   │   ├─ 사진 출석 업로드
   │   ├─ 댓글/반응 저장
+  │   ├─ 증바람 기록/통계/랭킹
   │   └─ 알림 구독 API 현재 UI에서는 비활성화
   ├─ cleanup-weekly-photos
   └─ cleanup-social-content
@@ -95,6 +101,7 @@ flowchart TD
   │   ├─ certification_images
   │   ├─ photo_comments
   │   ├─ photo_reactions
+  │   ├─ jeungbaram_records
   │   └─ notification_* 현재 비활성 알림용
   └─ Storage private bucket
       └─ workout-cert-images
@@ -196,6 +203,13 @@ https://<PROJECT_REF>.functions.supabase.co/dashboard-api
 | `GET` | `/groups/:slug/photos/:imageId/comments` | 댓글 조회 |
 | `POST` | `/groups/:slug/photos/:imageId/comments` | 댓글 등록 |
 | `POST` | `/groups/:slug/photos/:imageId/reactions` | 이모지 반응 등록 |
+| `GET` | `/groups/:slug/jeungbaram/monthly?month=YYYY-MM` | 증바람 월간 달력/날짜별 회차 목록 |
+| `GET` | `/groups/:slug/jeungbaram/stats` | 증바람 전체 누적 총판/승률/승패 |
+| `GET` | `/groups/:slug/jeungbaram/participants` | 증바람 고정 참석자 목록 |
+| `GET` | `/groups/:slug/jeungbaram/player-ranking` | 증바람 개인별 참여 판수 랭킹 |
+| `POST` | `/groups/:slug/jeungbaram/records/:date` | 특정 날짜에 새 증바람 회차 추가 |
+| `PUT` | `/groups/:slug/jeungbaram/records/:date/:recordId` | 특정 증바람 회차 수정 |
+| `DELETE` | `/groups/:slug/jeungbaram/records/:date/:recordId` | 특정 증바람 회차 삭제 |
 | `POST` | `/groups/:slug/notifications/subscribe` | 알림 구독 저장. 현재 화면에서는 숨김 |
 | `POST` | `/jobs/send-reminders` | 알림 발송 job. 현재 cron 비활성 |
 
@@ -221,6 +235,7 @@ apps/workout-checkin/supabase/migrations
 | `certification_images` | 사진 metadata. storage key, 날짜, mime type, 만료시간 저장 |
 | `photo_comments` | 사진 댓글 |
 | `photo_reactions` | 사진 이모지 반응 |
+| `jeungbaram_records` | 증바람 게임 회차별 승/패/참석자 기록 |
 | `notification_subscriptions` | Web Push 구독. 현재 기능 비활성 |
 | `notification_logs` | 알림 발송 로그. 현재 기능 비활성 |
 
@@ -238,6 +253,29 @@ apps/workout-checkin/supabase/migrations
 - 목표: 기본 주 3회
 - 벌금: 기본 30,000원
 - 남은 날짜와 남은 출석 횟수를 비교해서 `normal`, `emergency`, `penalty_due`, `safe` 상태 계산
+
+### 댓글/반응 정책
+
+- 댓글 작성자는 로그인 세션의 닉네임을 사용합니다.
+- 댓글에는 작성 시간이 함께 표시됩니다.
+- 운영/API 모드에서는 DB에 저장된 실제 댓글만 보여줍니다.
+- 로컬 mock 데이터용 `starterComments()`와 `starterReactionCounts()`는 mock 모드에서만 사용합니다.
+- 사진 상세를 열자마자 댓글을 작성해도, 늦게 도착한 댓글 조회 응답이 방금 작성한 댓글을 덮어쓰지 않도록 병합 처리합니다.
+
+### 증바람 기록 정책
+
+운동 출석과 별도로 친구들이 하는 증바람 게임 기록을 저장합니다.
+
+- 한 날짜에 여러 회차 기록 가능
+- 각 회차는 `wins`, `losses`, `participants`를 저장
+- 달력에는 날짜별 합산 판수/승률을 표시
+- 기록이 있는 날짜를 누르면 회차별 상세, 수정, 삭제 가능
+- 기록이 없는 날짜를 누르면 새 회차 기록 가능
+- 전체 누적 총판/승률/승패는 모든 기간 기준으로 계산
+- 개인별 참여 판수 랭킹은 각 회차의 `wins + losses`를 참석자별로 누적해서 계산
+  - 예: 4명이 10판을 같이 했으면 4명 모두에게 10판씩 누적
+- 메인 증바람 카드에는 TOP 4, 증바람 월간보기 모달에는 고정 참석자 8명 전체 랭킹 표시
+- 이 기능은 운동 출석, 벌금, 사진 기록에는 영향을 주지 않음
 
 ---
 
