@@ -76,6 +76,17 @@ export type JeungbaramStats = {
   win_rate: number;
 };
 
+export type JeungbaramPlayerRank = {
+  rank: number;
+  nickname: string;
+  total_games: number;
+  session_count: number;
+};
+
+export type JeungbaramPlayerRanking = {
+  players: JeungbaramPlayerRank[];
+};
+
 export type JeungbaramRecordInput = {
   wins: number;
   losses: number;
@@ -221,6 +232,11 @@ export async function fetchJeungbaramParticipants(slug: string, token: string): 
   const base = requireApiBaseUrl();
   const result = await fetchJson<{ participants: string[] }>(`${base}/groups/${encodeURIComponent(slug)}/jeungbaram/participants`, { token });
   return result.participants;
+}
+
+export async function fetchJeungbaramPlayerRanking(slug: string, token: string): Promise<JeungbaramPlayerRanking> {
+  const base = requireApiBaseUrl();
+  return fetchJson<JeungbaramPlayerRanking>(`${base}/groups/${encodeURIComponent(slug)}/jeungbaram/player-ranking`, { token });
 }
 
 export async function saveJeungbaramRecord(slug: string, token: string, date: string, input: JeungbaramRecordInput, recordId?: string): Promise<JeungbaramRecord> {

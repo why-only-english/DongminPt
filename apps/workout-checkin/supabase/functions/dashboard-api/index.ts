@@ -289,6 +289,32 @@ async function jeungbaramStats(supabase: ServiceClient, groupId: string) {
   };
 }
 
+async function jeungbaramPlayerRanking(supabase: ServiceClient, groupId: string) {
+  const { data } = await supabase
+    .from('jeungbaram_records')
+    .select('wins, losses, participants')
+    .eq('group_id', groupId);
+  const ranking = new Map<string, { nickname: string; total_games: number; session_count: number }>();
+  for (const participant of JEUNGBARAM_PARTICIPANTS) {
+    ranking.set(participant, { nickname: participant, total_games: 0, session_count: 0 });
+  }
+  for (const row of data ?? []) {
+    const totalGames = Number((row as any).wins ?? 0) + Number((row as any).losses ?? 0);
+    const participants = Array.isArray((row as any).participants) ? [...new Set((row as any).participants.map((item: unknown) => String(item)))] : [];
+    for (const participant of participants) {
+      const current = ranking.get(participant) ?? { nickname: participant, total_games: 0, session_count: 0 };
+      current.total_games += totalGames;
+      current.session_count += 1;
+      ranking.set(participant, current);
+    }
+  }
+  return {
+    players: [...ranking.values()]
+      .sort((a, b) => b.total_games - a.total_games || b.session_count - a.session_count || a.nickname.localeCompare(b.nickname, 'ko'))
+      .map((player, index) => ({ rank: index + 1, ...player })),
+  };
+}
+
 Deno.serve(async (req) => {
   const pf = preflight(req); if (pf) return pf;
   const path = pathAfterFunction(req);
@@ -346,13 +372,14 @@ Deno.serve(async (req) => {
       return jsonResponse({ days });
     }
 
-    const jeungbaramCollectionMatch = path.match(/^\/groups\/([^/]+)\/jeungbaram\/(monthly|stats|participants)$/);
+    const jeungbaramCollectionMatch = path.match(/^\/groups\/([^/]+)\/jeungbaram\/(monthly|stats|participants|player-ranking)$/);
     if (req.method === 'GET' && jeungbaramCollectionMatch) {
       const slug = decodeURIComponent(jeungbaramCollectionMatch[1]);
       const endpoint = jeungbaramCollectionMatch[2];
       const { supabase: client, group } = await requireSession(req, slug);
       if (endpoint === 'monthly') return jsonResponse(await jeungbaramMonthly(client, group.id, new URL(req.url).searchParams.get('month')));
       if (endpoint === 'participants') return jsonResponse({ participants: JEUNGBARAM_PARTICIPANTS });
+      if (endpoint === 'player-ranking') return jsonResponse(await jeungbaramPlayerRanking(client, group.id));
       return jsonResponse(await jeungbaramStats(client, group.id));
     }
 
