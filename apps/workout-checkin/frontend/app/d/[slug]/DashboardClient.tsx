@@ -25,6 +25,7 @@ import {
   type PhotoItem,
   type JeungbaramDay,
   type JeungbaramMonthly,
+  type JeungbaramRecord,
   type JeungbaramStats,
   type MemberSummary,
 } from '@/lib/dashboard-data';
@@ -104,7 +105,7 @@ function initials(name: string) {
 function emptyJeungbaramMonthly(days: Array<{ date: string }>): JeungbaramMonthly {
   return {
     month: days[0]?.date.slice(0, 7) ?? '',
-    days: days.map((day) => ({ date: day.date, record: null })),
+    days: days.map((day) => ({ date: day.date, records: [], record: null })),
   };
 }
 
@@ -122,6 +123,23 @@ function winRateTone(rate: number) {
   if (rate > 50) return 'win';
   if (rate < 50) return 'lose';
   return 'draw';
+}
+
+function recordsForDay(day: JeungbaramDay | null | undefined) {
+  if (!day) return [];
+  return day.records?.length ? day.records : day.record ? [day.record] : [];
+}
+
+function summarizeJeungbaramRecords(records: JeungbaramRecord[]) {
+  const wins = records.reduce((sum, record) => sum + record.wins, 0);
+  const losses = records.reduce((sum, record) => sum + record.losses, 0);
+  const totalGames = wins + losses;
+  return {
+    wins,
+    losses,
+    total_games: totalGames,
+    win_rate: totalGames ? Math.round((wins / totalGames) * 1000) / 10 : 0,
+  };
 }
 
 function clampNumberInput(value: string) {
@@ -203,6 +221,7 @@ export function DashboardClient({
   const [isJeungbaramOpen, setIsJeungbaramOpen] = useState(false);
   const [selectedDay, setSelectedDay] = useState<PhotoDay | null>(null);
   const [selectedJeungbaramDay, setSelectedJeungbaramDay] = useState<JeungbaramDay | null>(null);
+  const [selectedJeungbaramRecordId, setSelectedJeungbaramRecordId] = useState<string | null>(null);
   const [selectedPhoto, setSelectedPhoto] = useState<PhotoItem | null>(null);
   const [dashboardData, setDashboardData] = useState<DashboardData>({
     source,
@@ -252,6 +271,7 @@ export function DashboardClient({
     setIsJeungbaramOpen(false);
     setSelectedDay(null);
     setSelectedJeungbaramDay(null);
+    setSelectedJeungbaramRecordId(null);
     setSelectedPhoto(null);
   }
 
@@ -294,6 +314,7 @@ export function DashboardClient({
     setIsMonthOpen(false);
     setIsJeungbaramOpen(false);
     setSelectedJeungbaramDay(null);
+    setSelectedJeungbaramRecordId(null);
     setSelectedPhoto(null);
   }
 
@@ -312,7 +333,12 @@ export function DashboardClient({
       setJeungbaramStats(stats);
       setJeungbaramParticipants(participants);
       if (selectedJeungbaramDay) {
-        setSelectedJeungbaramDay(monthly.days.find((day) => day.date === selectedJeungbaramDay.date) ?? null);
+        const nextDay = monthly.days.find((day) => day.date === selectedJeungbaramDay.date) ?? null;
+        setSelectedJeungbaramDay(nextDay);
+        const nextRecords = recordsForDay(nextDay);
+        if (selectedJeungbaramRecordId && !nextRecords.some((record) => record.id === selectedJeungbaramRecordId)) {
+          setSelectedJeungbaramRecordId(nextRecords[0]?.id ?? null);
+        }
       }
     } catch {
       setJeungbaramError('증바람 기록을 불러오지 못했어. 잠시 후 다시 열어줘.');
@@ -323,9 +349,30 @@ export function DashboardClient({
 
   function openJeungbaramRecord(day: JeungbaramDay) {
     setSelectedJeungbaramDay(day);
-    setGameWins(day.record ? String(day.record.wins) : '');
-    setGameLosses(day.record ? String(day.record.losses) : '');
-    setGameParticipants(day.record?.participants ?? []);
+    const firstRecord = recordsForDay(day)[0] ?? null;
+    setSelectedJeungbaramRecordId(firstRecord?.id ?? null);
+    setGameWins(firstRecord ? String(firstRecord.wins) : '');
+    setGameLosses(firstRecord ? String(firstRecord.losses) : '');
+    setGameParticipants(firstRecord?.participants ?? []);
+    setJeungbaramError('');
+    window.setTimeout(() => {
+      gameRecordPanelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }, 0);
+  }
+
+  function editJeungbaramRecord(record: JeungbaramRecord) {
+    setSelectedJeungbaramRecordId(record.id);
+    setGameWins(String(record.wins));
+    setGameLosses(String(record.losses));
+    setGameParticipants(record.participants);
+    setJeungbaramError('');
+  }
+
+  function startNewJeungbaramRecord() {
+    setSelectedJeungbaramRecordId(null);
+    setGameWins('');
+    setGameLosses('');
+    setGameParticipants([]);
     setJeungbaramError('');
     window.setTimeout(() => {
       gameRecordPanelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -356,12 +403,27 @@ export function DashboardClient({
     setGameSaving(true);
     setJeungbaramError('');
     try {
-      const record = await saveJeungbaramRecord(slug, sessionToken, selectedJeungbaramDay.date, { wins, losses, participants: gameParticipants });
+      const record = await saveJeungbaramRecord(slug, sessionToken, selectedJeungbaramDay.date, { wins, losses, participants: gameParticipants }, selectedJeungbaramRecordId ?? undefined);
       setJeungbaramMonthly((current) => ({
         ...current,
-        days: current.days.map((day) => day.date === record.date ? { ...day, record } : day),
+        days: current.days.map((day) => {
+          if (day.date !== record.date) return day;
+          const currentRecords = recordsForDay(day);
+          const records = selectedJeungbaramRecordId
+            ? currentRecords.map((item) => item.id === record.id ? record : item)
+            : [...currentRecords, record];
+          return { ...day, records, record: records[0] ?? null };
+        }),
       }));
-      setSelectedJeungbaramDay((current) => current ? { ...current, record } : current);
+      setSelectedJeungbaramDay((current) => {
+        if (!current) return current;
+        const currentRecords = recordsForDay(current);
+        const records = selectedJeungbaramRecordId
+          ? currentRecords.map((item) => item.id === record.id ? record : item)
+          : [...currentRecords, record];
+        return { ...current, records, record: records[0] ?? null };
+      });
+      setSelectedJeungbaramRecordId(record.id);
       setJeungbaramStats(await fetchJeungbaramStats(slug, sessionToken));
     } catch {
       setJeungbaramError('저장에 실패했어. 입력값을 확인하고 다시 해줘.');
@@ -371,19 +433,31 @@ export function DashboardClient({
   }
 
   async function removeJeungbaramRecord() {
-    if (!selectedJeungbaramDay?.record || !sessionToken || gameSaving) return;
+    if (!selectedJeungbaramDay || !selectedJeungbaramRecordId || !sessionToken || gameSaving) return;
     setGameSaving(true);
     setJeungbaramError('');
     try {
-      await deleteJeungbaramRecord(slug, sessionToken, selectedJeungbaramDay.date);
+      await deleteJeungbaramRecord(slug, sessionToken, selectedJeungbaramDay.date, selectedJeungbaramRecordId);
+      const deletedId = selectedJeungbaramRecordId;
+      const remainingSelectedDayRecords = recordsForDay(selectedJeungbaramDay).filter((record) => record.id !== deletedId);
+      const nextSelectedRecord = remainingSelectedDayRecords[0] ?? null;
       setJeungbaramMonthly((current) => ({
         ...current,
-        days: current.days.map((day) => day.date === selectedJeungbaramDay.date ? { ...day, record: null } : day),
+        days: current.days.map((day) => {
+          if (day.date !== selectedJeungbaramDay.date) return day;
+          const records = recordsForDay(day).filter((record) => record.id !== deletedId);
+          return { ...day, records, record: records[0] ?? null };
+        }),
       }));
-      setSelectedJeungbaramDay((current) => current ? { ...current, record: null } : current);
-      setGameWins('');
-      setGameLosses('');
-      setGameParticipants([]);
+      setSelectedJeungbaramDay((current) => {
+        if (!current) return current;
+        const records = recordsForDay(current).filter((record) => record.id !== deletedId);
+        return { ...current, records, record: records[0] ?? null };
+      });
+      setSelectedJeungbaramRecordId(nextSelectedRecord?.id ?? null);
+      setGameWins(nextSelectedRecord ? String(nextSelectedRecord.wins) : '');
+      setGameLosses(nextSelectedRecord ? String(nextSelectedRecord.losses) : '');
+      setGameParticipants(nextSelectedRecord?.participants ?? []);
       setJeungbaramStats(await fetchJeungbaramStats(slug, sessionToken));
     } catch {
       setJeungbaramError('삭제에 실패했어. 잠시 후 다시 해줘.');
@@ -526,6 +600,9 @@ export function DashboardClient({
   const monthTotalChecks = monthDays.reduce((sum, day) => sum + day.members.length, 0);
   const gameMonthTitle = formatMonthTitle(jeungbaramMonthly.days);
   const gameMonthBlankCount = mondayFirstBlankCount(jeungbaramMonthly.days);
+  const selectedGameRecords = recordsForDay(selectedJeungbaramDay);
+  const selectedGameRecord = selectedGameRecords.find((record) => record.id === selectedJeungbaramRecordId) ?? null;
+  const selectedDayGameSummary = summarizeJeungbaramRecords(selectedGameRecords);
   const selectedGameTotal = Number(gameWins || 0) + Number(gameLosses || 0);
   const selectedGameRate = selectedGameTotal ? Math.round((Number(gameWins || 0) / selectedGameTotal) * 1000) / 10 : 0;
   const weekdayLabels = ['월', '화', '수', '목', '금', '토', '일'];
@@ -990,17 +1067,19 @@ export function DashboardClient({
               <div className="month-calendar-grid game-calendar-grid" aria-label={`${gameMonthTitle} 증바람 기록`}>
                 {Array.from({ length: gameMonthBlankCount }).map((_, index) => <div className="month-day blank" key={`game-blank-${index}`} />)}
                 {jeungbaramMonthly.days.map((day) => {
-                  const record = day.record;
-                  const tone = record ? winRateTone(record.win_rate) : '';
+                  const dayRecords = recordsForDay(day);
+                  const summary = summarizeJeungbaramRecords(dayRecords);
+                  const tone = dayRecords.length ? winRateTone(summary.win_rate) : '';
                   return (
-                    <button className={`month-day game-day ${record ? `done ${tone}` : ''} ${selectedJeungbaramDay?.date === day.date ? 'selected' : ''}`} type="button" key={`game-${day.date}`} onClick={() => openJeungbaramRecord(day)} aria-label={`${day.date} 증바람 ${record ? '상세 보기' : '기록하기'}`}>
+                    <button className={`month-day game-day ${dayRecords.length ? `done ${tone}` : ''} ${selectedJeungbaramDay?.date === day.date ? 'selected' : ''}`} type="button" key={`game-${day.date}`} onClick={() => openJeungbaramRecord(day)} aria-label={`${day.date} 증바람 ${dayRecords.length ? '상세 보기' : '기록하기'}`}>
                       <div className="month-day-top">
                         <strong>{formatDay(day.date)}</strong>
-                        {record && <em>{record.total_games}판</em>}
+                        {dayRecords.length > 0 && <em>{summary.total_games}판</em>}
                       </div>
-                      {record ? (
+                      {dayRecords.length > 0 ? (
                         <div className="game-day-copy">
-                          <b>{formatWinRate(record.win_rate)}</b>
+                          <b>{formatWinRate(summary.win_rate)}</b>
+                          {dayRecords.length > 1 && <small>{dayRecords.length}회</small>}
                         </div>
                       ) : <span className="month-rest">기록</span>}
                     </button>
@@ -1009,34 +1088,54 @@ export function DashboardClient({
               </div>
 
               {selectedJeungbaramDay && (
-                <form ref={gameRecordPanelRef} className={`game-record-form ${selectedJeungbaramDay.record ? 'has-record' : 'is-empty-day'}`} onSubmit={submitJeungbaramRecord}>
+                <form ref={gameRecordPanelRef} className={`game-record-form ${selectedGameRecords.length ? 'has-record' : 'is-empty-day'}`} onSubmit={submitJeungbaramRecord}>
                   <div className="game-form-head">
                     <div>
-                      <span>{selectedJeungbaramDay.record ? 'DAY DETAIL' : 'NEW RECORD'}</span>
+                      <span>{selectedGameRecords.length ? 'DAY SESSIONS' : 'NEW RECORD'}</span>
                       <strong>{formatWeekday(selectedJeungbaramDay.date)} {formatDay(selectedJeungbaramDay.date)}</strong>
                     </div>
-                    <em>{selectedGameTotal ? `${selectedGameTotal}판 · ${formatWinRate(selectedGameRate)}` : '승/패 입력 대기'}</em>
+                    <em>{selectedGameRecords.length ? `${selectedGameRecords.length}회 · ${selectedDayGameSummary.total_games}판 · ${formatWinRate(selectedDayGameSummary.win_rate)}` : '승/패 입력 대기'}</em>
                   </div>
 
-                  {selectedJeungbaramDay.record && (
-                    <div className={`game-record-detail ${winRateTone(selectedJeungbaramDay.record.win_rate)}`}>
+                  {selectedGameRecords.length > 0 && (
+                    <div className={`game-record-detail ${winRateTone(selectedDayGameSummary.win_rate)}`}>
                       <div className="game-detail-hero">
-                        <span>승률</span>
-                        <strong>{formatWinRate(selectedJeungbaramDay.record.win_rate)}</strong>
-                        <em>{selectedJeungbaramDay.record.total_games}판 기록</em>
+                        <span>하루 합산 승률</span>
+                        <strong>{formatWinRate(selectedDayGameSummary.win_rate)}</strong>
+                        <em>{selectedGameRecords.length}회 · {selectedDayGameSummary.total_games}판 기록</em>
                       </div>
                       <div className="game-detail-stats">
-                        <div><span>승리</span><strong>{selectedJeungbaramDay.record.wins}</strong></div>
-                        <div><span>패배</span><strong>{selectedJeungbaramDay.record.losses}</strong></div>
+                        <div><span>합산 승리</span><strong>{selectedDayGameSummary.wins}</strong></div>
+                        <div><span>합산 패배</span><strong>{selectedDayGameSummary.losses}</strong></div>
                       </div>
-                      <div className="game-detail-participants">
-                        <span>참가자</span>
-                        <div>
-                          {selectedJeungbaramDay.record.participants.map((participant) => <b key={`${selectedJeungbaramDay.date}-${participant}`}>{participant}</b>)}
-                        </div>
+                      <div className="game-session-list" aria-label={`${selectedJeungbaramDay.date} 증바람 라운드 목록`}>
+                        {selectedGameRecords.map((record, index) => (
+                          <button className={record.id === selectedJeungbaramRecordId ? 'selected' : ''} type="button" key={record.id} onClick={() => editJeungbaramRecord(record)} aria-pressed={record.id === selectedJeungbaramRecordId}>
+                            <span>{index + 1}회차</span>
+                            <strong>{record.wins}-{record.losses}</strong>
+                            <em>{record.total_games}판 · {formatWinRate(record.win_rate)}</em>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="game-edit-head">
+                    <div>
+                      <span>{selectedGameRecord ? '선택한 기록 수정' : '새 라운드 추가'}</span>
+                      <strong>{selectedGameRecord ? `${selectedGameRecords.findIndex((record) => record.id === selectedGameRecord.id) + 1}회차` : `${selectedGameRecords.length + 1}회차`}</strong>
+                    </div>
+                    <button type="button" onClick={startNewJeungbaramRecord} disabled={gameSaving}>+ 새 기록</button>
+                  </div>
+
+                  {selectedGameRecord && (
+                    <div className="game-detail-participants selected-session-participants">
+                      <span>선택 기록 참가자</span>
+                      <div>
+                        {selectedGameRecord.participants.map((participant) => <b key={`${selectedGameRecord.id}-${participant}`}>{participant}</b>)}
                       </div>
                       <button type="button" className="game-detail-delete" onClick={removeJeungbaramRecord} disabled={gameSaving}>
-                        이 날 기록 삭제
+                        이 기록 삭제
                       </button>
                     </div>
                   )}
@@ -1058,7 +1157,7 @@ export function DashboardClient({
                   </div>
 
                   <div className="game-form-actions">
-                    <button type="submit" disabled={gameSaving}>{gameSaving ? '저장 중' : selectedJeungbaramDay.record ? '수정 저장' : '기록 저장'}</button>
+                    <button type="submit" disabled={gameSaving}>{gameSaving ? '저장 중' : selectedGameRecord ? '선택 기록 수정' : '새 기록 저장'}</button>
                   </div>
                 </form>
               )}
