@@ -7,6 +7,7 @@ import {
   addPhotoReaction,
   deleteJeungbaramRecord,
   fetchJeungbaramMonthly,
+  fetchJeungbaramPlayerRanking,
   fetchJeungbaramParticipants,
   fetchJeungbaramStats,
   saveJeungbaramRecord,
@@ -25,6 +26,7 @@ import {
   type PhotoItem,
   type JeungbaramDay,
   type JeungbaramMonthly,
+  type JeungbaramPlayerRanking,
   type JeungbaramRecord,
   type JeungbaramStats,
   type MemberSummary,
@@ -111,6 +113,10 @@ function emptyJeungbaramMonthly(days: Array<{ date: string }>): JeungbaramMonthl
 
 function emptyJeungbaramStats(): JeungbaramStats {
   return { wins: 0, losses: 0, total_games: 0, win_rate: 0 };
+}
+
+function emptyJeungbaramPlayerRanking(): JeungbaramPlayerRanking {
+  return { players: [] };
 }
 
 function formatWinRate(rate: number) {
@@ -250,6 +256,7 @@ export function DashboardClient({
   const [notificationMessage, setNotificationMessage] = useState('');
   const [jeungbaramMonthly, setJeungbaramMonthly] = useState<JeungbaramMonthly>(() => emptyJeungbaramMonthly(initialMonthDays));
   const [jeungbaramStats, setJeungbaramStats] = useState<JeungbaramStats>(() => emptyJeungbaramStats());
+  const [jeungbaramPlayerRanking, setJeungbaramPlayerRanking] = useState<JeungbaramPlayerRanking>(() => emptyJeungbaramPlayerRanking());
   const [jeungbaramParticipants, setJeungbaramParticipants] = useState<string[]>([]);
   const [jeungbaramLoading, setJeungbaramLoading] = useState(false);
   const [jeungbaramError, setJeungbaramError] = useState('');
@@ -324,14 +331,16 @@ export function DashboardClient({
     setJeungbaramLoading(true);
     setJeungbaramError('');
     try {
-      const [monthly, stats, participants] = await Promise.all([
+      const [monthly, stats, participants, playerRanking] = await Promise.all([
         fetchJeungbaramMonthly(slug, sessionToken, month || undefined),
         fetchJeungbaramStats(slug, sessionToken),
         fetchJeungbaramParticipants(slug, sessionToken),
+        fetchJeungbaramPlayerRanking(slug, sessionToken),
       ]);
       setJeungbaramMonthly(monthly);
       setJeungbaramStats(stats);
       setJeungbaramParticipants(participants);
+      setJeungbaramPlayerRanking(playerRanking);
       if (selectedJeungbaramDay) {
         const nextDay = monthly.days.find((day) => day.date === selectedJeungbaramDay.date) ?? null;
         setSelectedJeungbaramDay(nextDay);
@@ -425,6 +434,7 @@ export function DashboardClient({
       });
       setSelectedJeungbaramRecordId(record.id);
       setJeungbaramStats(await fetchJeungbaramStats(slug, sessionToken));
+      setJeungbaramPlayerRanking(await fetchJeungbaramPlayerRanking(slug, sessionToken));
     } catch {
       setJeungbaramError('저장에 실패했어. 입력값을 확인하고 다시 해줘.');
     } finally {
@@ -459,6 +469,7 @@ export function DashboardClient({
       setGameLosses(nextSelectedRecord ? String(nextSelectedRecord.losses) : '');
       setGameParticipants(nextSelectedRecord?.participants ?? []);
       setJeungbaramStats(await fetchJeungbaramStats(slug, sessionToken));
+      setJeungbaramPlayerRanking(await fetchJeungbaramPlayerRanking(slug, sessionToken));
     } catch {
       setJeungbaramError('삭제에 실패했어. 잠시 후 다시 해줘.');
     } finally {
@@ -524,10 +535,11 @@ export function DashboardClient({
 
   useEffect(() => {
     if (source !== 'api' || !sessionToken) return;
-    void Promise.all([fetchJeungbaramStats(slug, sessionToken), fetchJeungbaramParticipants(slug, sessionToken)])
-      .then(([stats, participants]) => {
+    void Promise.all([fetchJeungbaramStats(slug, sessionToken), fetchJeungbaramParticipants(slug, sessionToken), fetchJeungbaramPlayerRanking(slug, sessionToken)])
+      .then(([stats, participants, playerRanking]) => {
         setJeungbaramStats(stats);
         setJeungbaramParticipants(participants);
+        setJeungbaramPlayerRanking(playerRanking);
       })
       .catch(() => undefined);
   }, [sessionToken, slug, source]);
@@ -927,6 +939,17 @@ export function DashboardClient({
                 <div><span>누적 승률</span><strong>{formatWinRate(jeungbaramStats.win_rate)}</strong></div>
                 <div><span>승 / 패</span><strong>{jeungbaramStats.wins}-{jeungbaramStats.losses}</strong></div>
               </div>
+              <div className="game-player-ranking compact" aria-label="증바람 개인별 참여 판수 랭킹">
+                <div className="game-ranking-head"><span>참여 판수 랭킹</span><strong>TOP 4</strong></div>
+                {jeungbaramPlayerRanking.players.slice(0, 4).map((player) => (
+                  <div className="game-ranking-row" key={player.nickname}>
+                    <b>{player.rank}</b>
+                    <span>{player.nickname}</span>
+                    <strong>{player.total_games}판</strong>
+                    <em>{player.session_count}회</em>
+                  </div>
+                ))}
+              </div>
             </div>
 
             <div className="panel photo-panel">
@@ -1056,6 +1079,18 @@ export function DashboardClient({
                 <div><span>누적 총판</span><strong>{jeungbaramStats.total_games}</strong></div>
                 <div><span>누적 승률</span><strong>{formatWinRate(jeungbaramStats.win_rate)}</strong></div>
                 <div><span>누적 승패</span><strong>{jeungbaramStats.wins}-{jeungbaramStats.losses}</strong></div>
+              </div>
+
+              <div className="game-player-ranking modal-ranking" aria-label="증바람 개인별 참여 판수 전체 랭킹">
+                <div className="game-ranking-head"><span>개인별 참여 판수</span><strong>누적 기준</strong></div>
+                {jeungbaramPlayerRanking.players.map((player) => (
+                  <div className="game-ranking-row" key={`modal-${player.nickname}`}>
+                    <b>{player.rank}</b>
+                    <span>{player.nickname}</span>
+                    <strong>{player.total_games}판</strong>
+                    <em>{player.session_count}회 참여</em>
+                  </div>
+                ))}
               </div>
 
               {jeungbaramLoading && <div className="game-notice">증바람 기록 불러오는 중...</div>}

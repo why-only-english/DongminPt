@@ -46,6 +46,8 @@ Vercel project root는 `apps/workout-checkin/frontend`로 설정합니다.
 - 수정: 회차 목록에서 특정 기록을 선택해 해당 회차만 수정
 - 삭제: 잘못 입력한 회차는 상세 카드의 `이 기록 삭제` 버튼으로 개별 삭제
 - 통계: 월별 달력에는 날짜별 기록, 상단에는 전체 기간 누적 총판수/승률 표시
+- 개인별 참여 랭킹: 각 회차의 `승+패` 총 판수를 참석자별로 누적해 “누가 몇 판 참여했는지” 순위를 표시
+- 랭킹 UI: 메인 증바람 카드에는 TOP 4, 증바람 월간보기 모달에는 고정 참석자 8명 전체 랭킹 표시
 - UI: 승률 `50% 초과 = 초록`, `50% 미만 = 빨강`, `50% = 회색`으로 표시
 - 모바일 UI: 작은 달력 칸에는 날짜/합산 판수/합산 승률만 표시하고, 날짜를 누르면 상세 카드에서 회차별 승/패/참석자/삭제를 확인
 - 분리: 운동 출석, 벌금, 사진 기록에는 영향을 주지 않음
@@ -57,6 +59,8 @@ Vercel project root는 `apps/workout-checkin/frontend`로 설정합니다.
 GET    /groups/:slug/jeungbaram/monthly?month=YYYY-MM
 GET    /groups/:slug/jeungbaram/stats
 GET    /groups/:slug/jeungbaram/participants
-PUT    /groups/:slug/jeungbaram/records/:date
-DELETE /groups/:slug/jeungbaram/records/:date
+GET    /groups/:slug/jeungbaram/player-ranking
+POST   /groups/:slug/jeungbaram/records/:date
+PUT    /groups/:slug/jeungbaram/records/:date/:recordId
+DELETE /groups/:slug/jeungbaram/records/:date/:recordId
 ```
