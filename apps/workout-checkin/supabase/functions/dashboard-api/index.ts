@@ -294,16 +294,20 @@ async function jeungbaramPlayerRanking(supabase: ServiceClient, groupId: string)
     .from('jeungbaram_records')
     .select('wins, losses, participants')
     .eq('group_id', groupId);
-  const ranking = new Map<string, { nickname: string; total_games: number; session_count: number }>();
+  const ranking = new Map<string, { nickname: string; total_games: number; wins: number; losses: number; session_count: number }>();
   for (const participant of JEUNGBARAM_PARTICIPANTS) {
-    ranking.set(participant, { nickname: participant, total_games: 0, session_count: 0 });
+    ranking.set(participant, { nickname: participant, total_games: 0, wins: 0, losses: 0, session_count: 0 });
   }
   for (const row of data ?? []) {
-    const totalGames = Number((row as any).wins ?? 0) + Number((row as any).losses ?? 0);
+    const wins = Number((row as any).wins ?? 0);
+    const losses = Number((row as any).losses ?? 0);
+    const totalGames = wins + losses;
     const participants = Array.isArray((row as any).participants) ? [...new Set((row as any).participants.map((item: unknown) => String(item)))] : [];
     for (const participant of participants) {
-      const current = ranking.get(participant) ?? { nickname: participant, total_games: 0, session_count: 0 };
+      const current = ranking.get(participant) ?? { nickname: participant, total_games: 0, wins: 0, losses: 0, session_count: 0 };
       current.total_games += totalGames;
+      current.wins += wins;
+      current.losses += losses;
       current.session_count += 1;
       ranking.set(participant, current);
     }

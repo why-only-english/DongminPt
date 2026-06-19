@@ -957,8 +957,16 @@ export function DashboardClient({
                 {jeungbaramPlayerRanking.players.slice(0, 4).map((player) => (
                   <div className="game-ranking-row" key={player.nickname}>
                     <b>{player.rank}</b>
-                    <span>{player.nickname}</span>
-                    <strong>{player.total_games}판</strong>
+                    <span className="game-ranking-name">{player.nickname}</span>
+                    <strong className="game-ranking-total">{player.total_games}판</strong>
+                    <span className="game-ranking-score">
+                      {player.total_games ? (
+                        <>
+                          <i className="win">{player.wins}승</i>
+                          <i className="loss">{player.losses}패</i>
+                        </>
+                      ) : <i className="empty">-</i>}
+                    </span>
                     <em>{player.session_count}회</em>
                   </div>
                 ))}
@@ -1099,8 +1107,16 @@ export function DashboardClient({
                 {jeungbaramPlayerRanking.players.map((player) => (
                   <div className="game-ranking-row" key={`modal-${player.nickname}`}>
                     <b>{player.rank}</b>
-                    <span>{player.nickname}</span>
-                    <strong>{player.total_games}판</strong>
+                    <span className="game-ranking-name">{player.nickname}</span>
+                    <strong className="game-ranking-total">{player.total_games}판</strong>
+                    <span className="game-ranking-score">
+                      {player.total_games ? (
+                        <>
+                          <i className="win">{player.wins}승</i>
+                          <i className="loss">{player.losses}패</i>
+                        </>
+                      ) : <i className="empty">-</i>}
+                    </span>
                     <em>{player.session_count}회 참여</em>
                   </div>
                 ))}

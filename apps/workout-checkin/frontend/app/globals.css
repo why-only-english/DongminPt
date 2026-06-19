@@ -1771,7 +1771,7 @@ a { color: inherit; text-decoration: none; }
   line-height: 1;
 }
 .game-ranking-row {
-  grid-template-columns: 28px minmax(0, 1fr) auto auto;
+  grid-template-columns: 28px minmax(0, 1fr) auto auto auto;
   gap: 8px;
   min-height: 34px;
   border-top: 1px solid rgba(202,187,169,.08);
@@ -1788,7 +1788,7 @@ a { color: inherit; text-decoration: none; }
   font-size: 11px;
   font-weight: 1000;
 }
-.game-ranking-row span {
+.game-ranking-name {
   overflow: hidden;
   color: var(--ink);
   font-size: 13px;
@@ -1796,10 +1796,31 @@ a { color: inherit; text-decoration: none; }
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.game-ranking-row strong {
+.game-ranking-total {
   color: var(--gold);
   font-size: 14px;
   line-height: 1;
+}
+.game-ranking-score {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 1000;
+  line-height: 1;
+  white-space: nowrap;
+}
+.game-ranking-score i {
+  font-style: normal;
+}
+.game-ranking-score .win {
+  color: var(--green);
+}
+.game-ranking-score .loss {
+  color: var(--red);
+}
+.game-ranking-score .empty {
+  color: var(--muted-2);
 }
 .game-ranking-row em {
   color: var(--muted-2);
@@ -2171,6 +2192,20 @@ a { color: inherit; text-decoration: none; }
   .game-entry-stats div { padding: 10px 8px; border-radius: 15px; }
   .game-entry-stats span { font-size: 9px; }
   .game-entry-stats strong { font-size: 20px; }
+  .game-ranking-row {
+    grid-template-columns: 24px minmax(0, 1fr) auto;
+    grid-template-areas:
+      "rank name total"
+      ". score session";
+    gap: 5px 8px;
+    min-height: 48px;
+    padding: 4px 0;
+  }
+  .game-ranking-row b { grid-area: rank; width: 20px; height: 20px; font-size: 10px; }
+  .game-ranking-name { grid-area: name; font-size: 12px; }
+  .game-ranking-total { grid-area: total; font-size: 13px; justify-self: end; }
+  .game-ranking-score { grid-area: score; font-size: 12px; }
+  .game-ranking-row em { grid-area: session; justify-self: end; font-size: 10px; }
   .game-participant-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .game-form-head { display: grid; }
   .game-score-inputs input { font-size: 20px; }

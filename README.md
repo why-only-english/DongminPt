@@ -206,7 +206,7 @@ https://<PROJECT_REF>.functions.supabase.co/dashboard-api
 | `GET` | `/groups/:slug/jeungbaram/monthly?month=YYYY-MM` | 증바람 월간 달력/날짜별 회차 목록 |
 | `GET` | `/groups/:slug/jeungbaram/stats` | 증바람 전체 누적 총판/승률/승패 |
 | `GET` | `/groups/:slug/jeungbaram/participants` | 증바람 고정 참석자 목록 |
-| `GET` | `/groups/:slug/jeungbaram/player-ranking` | 증바람 개인별 참여 판수 랭킹 |
+| `GET` | `/groups/:slug/jeungbaram/player-ranking` | 증바람 개인별 참여 판수/승패 랭킹 |
 | `POST` | `/groups/:slug/jeungbaram/records/:date` | 특정 날짜에 새 증바람 회차 추가 |
 | `PUT` | `/groups/:slug/jeungbaram/records/:date/:recordId` | 특정 증바람 회차 수정 |
 | `DELETE` | `/groups/:slug/jeungbaram/records/:date/:recordId` | 특정 증바람 회차 삭제 |
@@ -272,9 +272,10 @@ apps/workout-checkin/supabase/migrations
 - 기록이 있는 날짜를 누르면 회차별 상세, 수정, 삭제 가능
 - 기록이 없는 날짜를 누르면 새 회차 기록 가능
 - 전체 누적 총판/승률/승패는 모든 기간 기준으로 계산
-- 개인별 참여 판수 랭킹은 각 회차의 `wins + losses`를 참석자별로 누적해서 계산
-  - 예: 4명이 10판을 같이 했으면 4명 모두에게 10판씩 누적
+- 개인별 참여 판수 랭킹은 각 회차의 `wins + losses`, `wins`, `losses`를 참석자별로 누적해서 계산
+  - 예: 4명이 7승 3패, 총 10판을 같이 했으면 4명 모두에게 `10판`, `7승`, `3패`가 누적
 - 메인 증바람 카드에는 TOP 4, 증바람 월간보기 모달에는 고정 참석자 8명 전체 랭킹 표시
+- 랭킹 UI에는 `총판`, `승`, `패`, `참여횟수`를 함께 표시
 - 이 기능은 운동 출석, 벌금, 사진 기록에는 영향을 주지 않음
 
 ---

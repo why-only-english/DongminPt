@@ -80,6 +80,8 @@ export type JeungbaramPlayerRank = {
   rank: number;
   nickname: string;
   total_games: number;
+  wins: number;
+  losses: number;
   session_count: number;
 };
 
