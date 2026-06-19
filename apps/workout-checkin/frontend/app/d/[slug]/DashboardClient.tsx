@@ -955,19 +955,19 @@ export function DashboardClient({
               <div className="game-player-ranking compact" aria-label="증바람 개인별 참여 판수 랭킹">
                 <div className="game-ranking-head"><span>참여 판수 랭킹</span><strong>TOP 4</strong></div>
                 {jeungbaramPlayerRanking.players.slice(0, 4).map((player) => (
-                  <div className="game-ranking-row" key={player.nickname}>
+                  <div className={`game-ranking-row ${player.total_games ? '' : 'is-empty'}`} key={player.nickname}>
                     <b>{player.rank}</b>
                     <span className="game-ranking-name">{player.nickname}</span>
-                    <strong className="game-ranking-total">{player.total_games}판</strong>
-                    <span className="game-ranking-score">
-                      {player.total_games ? (
-                        <>
+                    {player.total_games ? (
+                      <>
+                        <strong className="game-ranking-total">{player.total_games}판</strong>
+                        <span className="game-ranking-score">
                           <i className="win">{player.wins}승</i>
                           <i className="loss">{player.losses}패</i>
-                        </>
-                      ) : <i className="empty">-</i>}
-                    </span>
-                    <em>{player.session_count}회</em>
+                        </span>
+                        <em>{player.session_count}회</em>
+                      </>
+                    ) : null}
                   </div>
                 ))}
               </div>
@@ -1105,19 +1105,19 @@ export function DashboardClient({
               <div className="game-player-ranking modal-ranking" aria-label="증바람 개인별 참여 판수 전체 랭킹">
                 <div className="game-ranking-head"><span>개인별 참여 판수</span><strong>누적 기준</strong></div>
                 {jeungbaramPlayerRanking.players.map((player) => (
-                  <div className="game-ranking-row" key={`modal-${player.nickname}`}>
+                  <div className={`game-ranking-row ${player.total_games ? '' : 'is-empty'}`} key={`modal-${player.nickname}`}>
                     <b>{player.rank}</b>
                     <span className="game-ranking-name">{player.nickname}</span>
-                    <strong className="game-ranking-total">{player.total_games}판</strong>
-                    <span className="game-ranking-score">
-                      {player.total_games ? (
-                        <>
+                    {player.total_games ? (
+                      <>
+                        <strong className="game-ranking-total">{player.total_games}판</strong>
+                        <span className="game-ranking-score">
                           <i className="win">{player.wins}승</i>
                           <i className="loss">{player.losses}패</i>
-                        </>
-                      ) : <i className="empty">-</i>}
-                    </span>
-                    <em>{player.session_count}회 참여</em>
+                        </span>
+                        <em>{player.session_count}회 참여</em>
+                      </>
+                    ) : null}
                   </div>
                 ))}
               </div>

@@ -1777,6 +1777,12 @@ a { color: inherit; text-decoration: none; }
   border-top: 1px solid rgba(202,187,169,.08);
   color: var(--muted);
 }
+.game-ranking-row.is-empty {
+  grid-template-columns: 28px minmax(0, 1fr);
+}
+.game-ranking-row.is-empty .game-ranking-name {
+  color: rgba(238, 238, 228, .72);
+}
 .game-ranking-row b {
   width: 22px;
   height: 22px;
@@ -2206,6 +2212,11 @@ a { color: inherit; text-decoration: none; }
   .game-ranking-total { grid-area: total; font-size: 13px; justify-self: end; }
   .game-ranking-score { grid-area: score; font-size: 12px; }
   .game-ranking-row em { grid-area: session; justify-self: end; font-size: 10px; }
+  .game-ranking-row.is-empty {
+    grid-template-columns: 24px minmax(0, 1fr);
+    grid-template-areas: "rank name";
+    min-height: 38px;
+  }
   .game-participant-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .game-form-head { display: grid; }
   .game-score-inputs input { font-size: 20px; }
